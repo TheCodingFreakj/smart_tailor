@@ -7,4 +7,5 @@ channels
 celery
 channels
 gunicorn
+requests
 django-cors-headers

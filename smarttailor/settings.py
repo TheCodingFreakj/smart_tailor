@@ -41,7 +41,7 @@ INSTALLED_APPS = [
     'analytics'
 ]
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['https://smart-tailor.onrender.com']
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -137,3 +137,7 @@ CORS_ALLOWED_ORIGINS = [
 
 # Or allow all origins (not recommended for production)
 CORS_ALLOW_ALL_ORIGINS = True
+SHOPIFY_API_KEY="1e49496f044a9cc3a5b89a5e12a3b493"
+SHOPIFY_API_SECRET="fa068188b750fbb3cc5f77d2e3b036c0"
+USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
