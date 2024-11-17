@@ -188,6 +188,6 @@ class ShopifyUninstallWebhookView(View):
             return JsonResponse({"error": "Unauthorized"}, status=401)
 
         # Clean up database
-        ShopifyShop.objects.filter(shop_url=shop).delete()
+        ShopifyStore.objects.filter(shop_url=shop).delete()
 
         return JsonResponse({"success": "Webhook received"})
