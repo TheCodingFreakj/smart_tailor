@@ -5,6 +5,7 @@ from django.http import JsonResponse
 from urllib.parse import urlencode
 import hashlib
 import hmac
+from .models import ShopifyStore
 
 # Shopify OAuth Callback URL
 def shopify_callback(request):
@@ -67,10 +68,19 @@ def exchange_code_for_token(shop, code):
 
 def save_access_token(shop, access_token):
     """
-    Save the access token securely. You may want to store this in a database.
+    Save the access token securely in PostgreSQL database.
     """
-    # Save token in your database or session
-    # For example, using Django models to associate the shop with the access token:
-    # Shop.objects.update_or_create(shop_name=shop, defaults={'access_token': access_token})
-    pass
+    # Store the access token in the database or update it if the shop already exists
+    shop_record, created = ShopifyStore.objects.update_or_create(
+        shop_name=shop,  # Use the shop name as the unique identifier
+        defaults={'access_token': access_token}  # Update the access token
+    )
+    
+    if created:
+        print(f"Created new store record for {shop}")
+    else:
+        print(f"Updated access token for {shop}")
+    
+    # Optionally, you can return the created or updated shop record
+    return shop_record
 

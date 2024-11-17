@@ -9,3 +9,4 @@ channels
 gunicorn
 requests
 django-cors-headers
+psycopg2
