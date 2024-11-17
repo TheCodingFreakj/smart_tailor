@@ -17,7 +17,7 @@ def save_access_token(shop, access_token):
     # Store the access token in the database or update it if the shop already exists
     shop_record, created = ShopifyStore.objects.update_or_create(
         shop_name=shop,  # Use the shop name as the unique identifier
-        defaults={'access_token': access_token}  # Update the access token
+        defaults={'access_token': access_token,, 'is_installed':True, 'first_time': created}  # Update the access token
     )
     
     if created:
