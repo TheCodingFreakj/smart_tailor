@@ -41,7 +41,7 @@ INSTALLED_APPS = [
     'analytics'
 ]
 
-ALLOWED_HOSTS = ['https://smart-tailor.onrender.com']
+ALLOWED_HOSTS = ['smart-tailor.onrender.com']
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
