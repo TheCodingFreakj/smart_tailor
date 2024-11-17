@@ -104,7 +104,25 @@ class ShopifyInstallView(View):
         return redirect(oauth_url)
     
 
+import requests
 
+def get_webhooks(shop_url, access_token):
+    url = f"https://{shop_url}/admin/api/2023-01/webhooks.json"
+    headers = {
+        "X-Shopify-Access-Token": access_token
+    }
+    response = requests.get(url, headers=headers)
+    return response.json()
+
+
+
+def delete_webhook(shop_url, access_token, webhook_id):
+    url = f"https://{shop_url}/admin/api/2023-01/webhooks/{webhook_id}.json"
+    headers = {
+        "X-Shopify-Access-Token": access_token
+    }
+    response = requests.delete(url, headers=headers)
+    return response.status_code
 
 
 import requests
@@ -117,7 +135,31 @@ from django.http import JsonResponse
 import requests
 from django.conf import settings
 from django.shortcuts import redirect
-
+def register_uninstall_webhook(shop, access_token, webhook_url):
+    """
+    Registers the app/uninstalled webhook for a given shop.
+    """
+    webhook_payload = {
+        "webhook": {
+            "topic": "app/uninstalled",
+            "address": webhook_url,
+            "format": "json"
+        }
+    }
+    headers = {"X-Shopify-Access-Token": access_token}
+    response = requests.post(
+        f"https://{shop}/admin/api/2023-10/webhooks.json",
+        json=webhook_payload,
+        headers=headers,
+    )
+    if response.status_code == 201:
+        return True, "Webhook registered successfully"
+    elif response.status_code == 422:
+        # Check if the webhook already exists
+        return False, "Webhook for this topic already exists"
+    else:
+        return False, response.json()
+    
 
 class ShopifyCallbackView(View):
     def get(self, request):
@@ -141,21 +183,9 @@ class ShopifyCallbackView(View):
 
             # Register the app/uninstalled webhook
             webhook_url = f"{settings.SHOPIFY_APP_URL}/shopify/uninstall-webhook/"
-            webhook_payload = {
-                "webhook": {
-                    "topic": "app/uninstalled",
-                    "address": webhook_url,
-                    "format": "json"
-                }
-            }
-            headers = {"X-Shopify-Access-Token": access_token}
-            webhook_response = requests.post(
-                f"https://{shop}/admin/api/2023-10/webhooks.json",
-                json=webhook_payload,
-                headers=headers,
-            )
-            if webhook_response.status_code != 201:
-                print("Failed to register uninstall webhook", webhook_response.json())
+            success, message = register_uninstall_webhook(shop, access_token, webhook_url)
+            if not success:
+                print(f"Failed to register uninstall webhook: {message}")
 
             # Redirect to React app
             react_home_url = "https://smart-tailor-frnt.onrender.com"
