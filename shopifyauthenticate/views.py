@@ -84,3 +84,51 @@ def save_access_token(shop, access_token):
     # Optionally, you can return the created or updated shop record
     return shop_record
 
+import requests
+from django.conf import settings
+from django.http import JsonResponse
+from django.shortcuts import redirect
+from django.views import View
+
+class ShopifyInstallView(View):
+    def get(self, request, *args, **kwargs):
+        shop = request.GET.get('shop')
+        api_key = settings.SHOPIFY_API_KEY
+        redirect_uri = f"{settings.SHOPIFY_APP_URL}/shopify/callback/"
+        
+        # Define the scopes you need for your app
+        scopes = "read_products,write_products,read_orders,write_orders"
+        
+        oauth_url = f"https://{shop}/admin/oauth/authorize?client_id={api_key}&scope={scopes}&redirect_uri={redirect_uri}&state=nonce"
+        
+        return redirect(oauth_url)
+    
+
+
+
+
+import requests
+from django.conf import settings
+from django.http import JsonResponse
+
+
+class ShopifyCallbackView(View):
+    def get(self, request):
+        shop = request.GET.get('shop')
+        code = request.GET.get('code')
+
+        # Exchange the code for an access token
+        token_url = f"https://{shop}/admin/oauth/access_token"
+        payload = {
+            "client_id": settings.SHOPIFY_API_KEY,
+            "client_secret": settings.SHOPIFY_API_SECRET,
+            "code": code,
+        }
+        response = requests.post(token_url, data=payload)
+
+        if response.status_code == 200:
+            access_token = response.json().get("access_token")
+            # Save shop details
+            save_access_token(shop, access_token)
+            return JsonResponse({"message": "App installed successfully"})
+        return JsonResponse({"error": "Token exchange failed"}, status=400)    
