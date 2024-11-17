@@ -130,5 +130,9 @@ class ShopifyCallbackView(View):
             access_token = response.json().get("access_token")
             # Save shop details
             save_access_token(shop, access_token)
-            return JsonResponse({"message": "App installed successfully"})
-        return JsonResponse({"error": "Token exchange failed"}, status=400)    
+            react_home_url = "https://smart-tailor-frnt.onrender.com"  # Replace with your React app's URL
+            return redirect(react_home_url)
+
+        # Redirect to an error page if token exchange fails
+        error_page_url = "https://smart-tailor-frnt.onrender.com/error"  # Optional: Error page in React app
+        return redirect(error_page_url)  
