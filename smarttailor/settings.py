@@ -42,7 +42,7 @@ INSTALLED_APPS = [
     'shopifyauthenticate'
 ]
 
-ALLOWED_HOSTS = ['smart-tailor.onrender.com']
+ALLOWED_HOSTS = ['smart-tailor.onrender.com', '127.0.0.1']
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
