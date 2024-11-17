@@ -39,7 +39,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'recommendations', 
     'analytics',
-    'shopifyauthenticate'
+    'shopifyauthenticate',
+    'corsheaders'
 ]
 
 ALLOWED_HOSTS = ['smart-tailor.onrender.com', '127.0.0.1']
@@ -136,12 +137,13 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Allow specific origins
 CORS_ALLOWED_ORIGINS = [
-    "https://smart-tailor.onrender.com",
+    "https://smart-tailor-frnt.onrender.com",
     "http://localhost:3000",  # For local development
 ]
 
 # Or allow all origins (not recommended for production)
 CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True 
 SHOPIFY_API_KEY="1e49496f044a9cc3a5b89a5e12a3b493"
 SHOPIFY_API_SECRET="fa068188b750fbb3cc5f77d2e3b036c0"
 USE_X_FORWARDED_HOST = True
