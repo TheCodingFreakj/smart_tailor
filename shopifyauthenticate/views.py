@@ -134,7 +134,7 @@ def check_installation_status(request):
     if not shop_domain:
         return JsonResponse({"installed": False, "error": "Shop parameter is missing"}, status=400)
 
-    shop = ShopifyStore.objects.filter(shop_domain=shop_domain).first()
+    shop = ShopifyStore.objects.filter(shop_name=shop_domain).first()
     if shop and shop.is_installed:
         return JsonResponse({"installed": True})
     else:
@@ -161,7 +161,7 @@ def uninstall_webhook(request):
     shop_domain = payload.get("domain")
     if shop_domain:
         # Mark the shop as uninstalled
-        shop = ShopifyStore.objects.filter(shop_domain=shop_domain).first()
+        shop = ShopifyStore.objects.filter(shop_name=shop_domain).first()
         if shop:
             shop.is_installed = False
             shop.save()
