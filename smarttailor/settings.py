@@ -53,6 +53,8 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+MIDDLEWARE.insert(0, 'corsheaders.middleware.CorsMiddleware')
+
 ROOT_URLCONF = 'smarttailor.urls'
 
 TEMPLATES = [
@@ -127,3 +129,11 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+# Allow specific origins
+CORS_ALLOWED_ORIGINS = [
+    "https://smart-tailor.onrender.com",
+    "http://localhost:3000",  # For local development
+]
+
+# Or allow all origins (not recommended for production)
+CORS_ALLOW_ALL_ORIGINS = True
