@@ -6,3 +6,4 @@ tensorflow
 channels
 celery
 channels
+gunicorn
