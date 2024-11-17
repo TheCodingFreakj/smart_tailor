@@ -112,6 +112,13 @@ from django.conf import settings
 from django.http import JsonResponse
 
 
+
+
+import requests
+from django.conf import settings
+from django.shortcuts import redirect
+from .models import ShopifyShop
+
 class ShopifyCallbackView(View):
     def get(self, request):
         shop = request.GET.get('shop')
@@ -128,11 +135,59 @@ class ShopifyCallbackView(View):
 
         if response.status_code == 200:
             access_token = response.json().get("access_token")
+
             # Save shop details
             save_access_token(shop, access_token)
-            react_home_url = "https://smart-tailor-frnt.onrender.com"  # Replace with your React app's URL
+
+            # Register the app/uninstalled webhook
+            webhook_url = f"{settings.SHOPIFY_APP_URL}/shopify/uninstall-webhook/"
+            webhook_payload = {
+                "webhook": {
+                    "topic": "app/uninstalled",
+                    "address": webhook_url,
+                    "format": "json"
+                }
+            }
+            headers = {"X-Shopify-Access-Token": access_token}
+            webhook_response = requests.post(
+                f"https://{shop}/admin/api/2023-10/webhooks.json",
+                json=webhook_payload,
+                headers=headers,
+            )
+            if webhook_response.status_code != 201:
+                print("Failed to register uninstall webhook", webhook_response.json())
+
+            # Redirect to React app
+            react_home_url = "https://smart-tailor-frnt.onrender.com"
             return redirect(react_home_url)
 
         # Redirect to an error page if token exchange fails
-        error_page_url = "https://smart-tailor-frnt.onrender.com/error"  # Optional: Error page in React app
-        return redirect(error_page_url)  
+        return redirect("https://smart-tailor-frnt.onrender.com/error")
+
+
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+import hmac
+import hashlib
+
+class ShopifyUninstallWebhookView(View):
+    @csrf_exempt
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
+
+    def post(self, request):
+        shop = request.headers.get("X-Shopify-Shop-Domain")
+        hmac_header = request.headers.get("X-Shopify-Hmac-SHA256")
+        data = request.body
+
+        # Verify webhook authenticity
+        secret = settings.SHOPIFY_API_SECRET
+        computed_hmac = hmac.new(secret.encode(), data, hashlib.sha256).hexdigest()
+
+        if not hmac.compare_digest(computed_hmac, hmac_header):
+            return JsonResponse({"error": "Unauthorized"}, status=401)
+
+        # Clean up database
+        ShopifyShop.objects.filter(shop_url=shop).delete()
+
+        return JsonResponse({"success": "Webhook received"})
