@@ -1,3 +1,5 @@
+import base64
+import json
 import requests
 from django.shortcuts import redirect
 from django.conf import settings
@@ -124,14 +126,48 @@ def delete_webhook(shop_url, access_token, webhook_id):
     response = requests.delete(url, headers=headers)
     return response.status_code
 
+from django.http import JsonResponse
 
+
+def check_installation_status(request):
+    shop_domain = request.GET.get('shop')
+    if not shop_domain:
+        return JsonResponse({"installed": False, "error": "Shop parameter is missing"}, status=400)
+
+    shop = ShopifyStore.objects.filter(shop_domain=shop_domain).first()
+    if shop and shop.is_installed:
+        return JsonResponse({"installed": True})
+    else:
+        return JsonResponse({"installed": False, "error": "App is not installed"}, status=403)
 import requests
 from django.conf import settings
 from django.http import JsonResponse
 
 
+from django.http import HttpResponse
 
+def uninstall_webhook(request):
+    shopify_hmac = request.headers.get('X-Shopify-Hmac-Sha256')
+    data = request.body
+    secret = settings.SHOPIFY_API_SECRET.encode('utf-8')
+    hash_calculated = base64.b64encode(
+        hmac.new(secret, data, hashlib.sha256).digest()
+    ).decode()
 
+    if shopify_hmac != hash_calculated:
+        return HttpResponse("Unauthorized", status=401)
+
+    payload = json.loads(data)
+    shop_domain = payload.get("domain")
+    if shop_domain:
+        # Mark the shop as uninstalled
+        shop = ShopifyStore.objects.filter(shop_domain=shop_domain).first()
+        if shop:
+            shop.is_installed = False
+            shop.save()
+            print(f"Shop {shop_domain} marked as uninstalled.")
+
+    return HttpResponse("Webhook processed", status=200)
 import requests
 from django.conf import settings
 from django.shortcuts import redirect
