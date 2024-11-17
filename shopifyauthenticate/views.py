@@ -159,6 +159,8 @@ class ShopifyCallbackView(View):
         }
         response = requests.post(token_url, data=payload)
 
+        print(response)
+
         if response.status_code == 200:
             access_token = response.json().get("access_token")
 
@@ -205,3 +207,11 @@ class ShopifyUninstallWebhookView(View):
         ShopifyStore.objects.filter(shop_url=shop).delete()
 
         return JsonResponse({"success": "Webhook received"})
+from .models import ShopifyStore
+
+def get_shop_access_token(shop_name):
+    try:
+        shop = ShopifyStore.objects.get(shop_name=shop_name)
+        return shop.access_token
+    except ShopifyStore.DoesNotExist:
+        raise ValueError(f"No access token found for shop: {shop_name}")
