@@ -188,7 +188,7 @@ class ShopifyCallbackView(View):
                 print(f"Failed to register uninstall webhook: {message}")
 
             # Redirect to React app
-            react_home_url = "https://smart-tailor-frnt.onrender.com"
+            react_home_url = "https://smart-tailor-frnt.onrender.com/dashboard"
             return redirect(react_home_url)
 
         # Redirect to an error page if token exchange fails
