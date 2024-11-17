@@ -1,0 +1,8 @@
+djangorestframework
+scikit-learn 
+pandas 
+numpy 
+tensorflow
+channels
+celery
+channels
