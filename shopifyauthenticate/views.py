@@ -74,8 +74,8 @@ def check_installation_status(request):
 
         # Check if the shop exists in the database
         shop = ShopifyStore.objects.filter(shop_name=shop_domain).first()
-        if shop and shop.is_installed:
-            return JsonResponse({"installed": True})
+        if shop:
+            return JsonResponse({"installed": shop.is_installed, "first_time":shop.first_time})
         else:
             return JsonResponse(
                 {"installed": False, "error": "App is not installed or shop not found"}, 
