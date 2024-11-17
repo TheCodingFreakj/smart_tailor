@@ -81,8 +81,12 @@ WSGI_APPLICATION = 'smarttailor.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'defaultdb',
+        'USER': 'avnadmin',
+        'PASSWORD': 'AVNS_SPx5mGZsHfWLTBIzEGM',
+        'HOST': 'pg-39985733-pallavidapriya75-97f0.h.aivencloud.com',
+        'PORT': '12783',
     }
 }
 
