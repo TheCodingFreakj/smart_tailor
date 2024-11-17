@@ -9,64 +9,6 @@ import hashlib
 import hmac
 from .models import ShopifyStore
 
-# Shopify OAuth Callback URL
-def shopify_callback(request):
-    # Step 1: Extract the necessary parameters from Shopify's callback request
-    shop = request.GET.get('shop')
-    code = request.GET.get('code')
-    hmac_signature = request.GET.get('hmac_sha256')
-    
-    # Step 2: Verify the request is coming from Shopify using the HMAC signature
-    if not verify_shopify_signature(request.GET, hmac_signature):
-        return JsonResponse({'error': 'Invalid signature'}, status=400)
-
-    # Step 3: Exchange the authorization code for an access token
-    access_token = exchange_code_for_token(shop, code)
-
-    if access_token:
-        # Save the access token securely (e.g., in your database)
-        # You might want to associate the access token with the shop's details.
-        save_access_token(shop, access_token)
-        
-        # Redirect the merchant to a success page or your app's dashboard
-        return redirect('success_page')  # Update with your actual page
-    
-    return JsonResponse({'error': 'Failed to exchange code for access token'}, status=400)
-
-def verify_shopify_signature(params, hmac_signature):
-    """
-    Verifies the authenticity of the request using the Shopify HMAC-SHA256 signature.
-    """
-    # Prepare the data to be used for signature generation (shopify does this)
-    sorted_params = sorted(params.items())
-    query_string = urlencode(sorted_params).encode('utf-8')
-
-    # Verify the HMAC using the shared secret
-    secret = settings.SHOPIFY_API_SECRET.encode('utf-8')
-    computed_signature = hmac.new(secret, query_string, hashlib.sha256).hexdigest()
-
-    return hmac_signature == computed_signature
-
-def exchange_code_for_token(shop, code):
-    """
-    Exchanges the authorization code for an access token from Shopify.
-    """
-    # Prepare the API request to Shopify's access token endpoint
-    url = f'https://{shop}/admin/oauth/access_token'
-    data = {
-        'client_id': settings.SHOPIFY_API_KEY,
-        'client_secret': settings.SHOPIFY_API_SECRET,
-        'code': code
-    }
-
-    # Make the POST request to exchange the code for a token
-    response = requests.post(url, data=data)
-    
-    if response.status_code == 200:
-        # Return the access token (parse the JSON response)
-        return response.json().get('access_token')
-    else:
-        return None
 
 def save_access_token(shop, access_token):
     """
@@ -106,39 +48,45 @@ class ShopifyInstallView(View):
         return redirect(oauth_url)
     
 
-import requests
-
-def get_webhooks(shop_url, access_token):
-    url = f"https://{shop_url}/admin/api/2023-01/webhooks.json"
-    headers = {
-        "X-Shopify-Access-Token": access_token
-    }
-    response = requests.get(url, headers=headers)
-    return response.json()
-
-
-
-def delete_webhook(shop_url, access_token, webhook_id):
-    url = f"https://{shop_url}/admin/api/2023-01/webhooks/{webhook_id}.json"
-    headers = {
-        "X-Shopify-Access-Token": access_token
-    }
-    response = requests.delete(url, headers=headers)
-    return response.status_code
-
+import json
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from .models import Shop
 
-
+@csrf_exempt
 def check_installation_status(request):
-    shop_domain = request.GET.get('shop')
-    if not shop_domain:
-        return JsonResponse({"installed": False, "error": "Shop parameter is missing"}, status=400)
+    if request.method != "POST":
+        return JsonResponse(
+            {"installed": False, "error": "Invalid request method"}, 
+            status=405
+        )
 
-    shop = ShopifyStore.objects.filter(shop_name=shop_domain).first()
-    if shop and shop.is_installed:
-        return JsonResponse({"installed": True})
-    else:
-        return JsonResponse({"installed": False, "error": "App is not installed"}, status=403)
+    try:
+        # Parse JSON body
+        data = json.loads(request.body)
+        shop_domain = data.get("shop")
+        
+        if not shop_domain:
+            return JsonResponse(
+                {"installed": False, "error": "Shop parameter is missing or invalid"}, 
+                status=400
+            )
+
+        # Check if the shop exists in the database
+        shop = Shop.objects.filter(shop_name=shop_domain).first()
+        if shop and shop.is_installed:
+            return JsonResponse({"installed": True})
+        else:
+            return JsonResponse(
+                {"installed": False, "error": "App is not installed or shop not found"}, 
+                status=403
+            )
+
+    except json.JSONDecodeError:
+        return JsonResponse(
+            {"installed": False, "error": "Invalid JSON body"}, 
+            status=400
+        )
 import requests
 from django.conf import settings
 from django.http import JsonResponse
