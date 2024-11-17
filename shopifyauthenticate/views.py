@@ -51,7 +51,7 @@ class ShopifyInstallView(View):
 import json
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from .models import Shop
+
 
 @csrf_exempt
 def check_installation_status(request):
@@ -73,7 +73,7 @@ def check_installation_status(request):
             )
 
         # Check if the shop exists in the database
-        shop = Shop.objects.filter(shop_name=shop_domain).first()
+        shop = ShopifyStore.objects.filter(shop_name=shop_domain).first()
         if shop and shop.is_installed:
             return JsonResponse({"installed": True})
         else:
