@@ -8,7 +8,9 @@ class VerifyAppInstallationMiddleware:
     def __call__(self, request):
 
         hmac = request.headers.get('X-Shopify-Hmac-Sha256')
-        if hmac == '':
+        print(hmac)
+        if hmac == None:
              return redirect("https://smart-tailor-frnt.onrender.com/error")
         response = self.get_response(request)
+        print(response)
         return response

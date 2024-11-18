@@ -101,6 +101,7 @@ def verify_shop(request):
 
 @csrf_exempt
 def check_installation_status(request):
+    
 
     # if verify_shop(request) == False:
     #     return HttpResponseForbidden("Access denied. This store is not authorized to use the app.")
