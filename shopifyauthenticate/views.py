@@ -143,7 +143,7 @@ from django.http import JsonResponse
 
 
 from django.http import HttpResponse
-
+@csrf_exempt
 def uninstall_webhook(request):
     shopify_hmac = request.headers.get('X-Shopify-Hmac-Sha256')
     data = request.body
@@ -223,7 +223,7 @@ class ShopifyCallbackView(View):
                 print(f"Failed to register uninstall webhook: {message}")
 
             # Redirect to React app
-            react_home_url = "https://smart-tailor-frnt.onrender.com/dashboard"
+            react_home_url = f"https://smart-tailor-frnt.onrender.com/dashboard?shop={shop}"
             return redirect(react_home_url)
 
         # Redirect to an error page if token exchange fails
