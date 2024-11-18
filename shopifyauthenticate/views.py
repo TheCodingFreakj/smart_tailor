@@ -88,9 +88,37 @@ import json
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
+from django.http import HttpResponseForbidden
+from django.shortcuts import render
+import re
+
+def verify_shop(request):
+    # Get the shop from the request (in this case from the `Referer` header)
+    referer = request.META.get('HTTP_REFERER')
+
+    if referer:
+        # Extract the domain from the referer header
+        referer_domain = re.search(r'https?://(.*?)/', referer)
+
+        if referer_domain:
+            shop_domain = referer_domain.group(1)
+
+            # Check if the shop is installed in your app
+            shop = ShopifyStore.objects.filter(shop_name=shop_domain).first()
+            
+            if shop:
+                # Proceed to the public URL logic
+                return True
+            else:
+                # Shop is not found or not installed
+                return False
+    return False
 
 @csrf_exempt
 def check_installation_status(request):
+
+    if verify_shop() == False:
+        return HttpResponseForbidden("Access denied. This store is not authorized to use the app.")
     if request.method != "POST":
         return JsonResponse(
             {"installed": False, "error": "Invalid request method"}, 
@@ -100,23 +128,24 @@ def check_installation_status(request):
     try:
         # Parse JSON body
         data = json.loads(request.body)
-        shop_domain = data.get("shop")
+        shop_id = data.get("shop")
         
-        if not shop_domain:
+        if not shop_id:
             return JsonResponse(
                 {"installed": False, "error": "Shop parameter is missing or invalid"}, 
                 status=400
             )
 
         # Check if the shop exists in the database
-        shop = ShopifyStore.objects.filter(shop_name=shop_domain).first()
+        shop = ShopifyStore.objects.filter(shop_name=shop_id).first()
 
         if shop:
             # Check if the app is installed and if it's the first installation
             if shop.is_installed:
                 return JsonResponse({
                     "installed": shop.is_installed, 
-                    "first_time": shop.first_time
+                    "first_time": shop.first_time,
+                    "access_token": shop.access_token
                 })
             else:
                 return JsonResponse({
@@ -222,8 +251,10 @@ class ShopifyCallbackView(View):
             if not success:
                 print(f"Failed to register uninstall webhook: {message}")
 
+            shopRecord = ShopifyStore.objects.filter(shop_name=shop).first()    
+
             # Redirect to React app
-            react_home_url = f"https://smart-tailor-frnt.onrender.com/dashboard/{shop}"
+            react_home_url = f"https://smart-tailor-frnt.onrender.com/dashboard/{shopRecord.id}"
             return redirect(react_home_url)
 
         # Redirect to an error page if token exchange fails
