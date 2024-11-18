@@ -2,7 +2,7 @@ from django.shortcuts import redirect
 
 def verify_app_installation(request):
     # Extract the HMAC header from the request
-    hmac = request.headers.get('X-Shopify-Hmac-Sha256')
+    hmac =  request.headers.get("X-Shopify-Hmac-SHA256")
     print(hmac)
     
     # If HMAC is not found or doesn't match, redirect to error page
