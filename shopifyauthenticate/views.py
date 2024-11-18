@@ -161,9 +161,8 @@ def uninstall_webhook(request):
         # Mark the shop as uninstalled
         shop = ShopifyStore.objects.filter(shop_name=shop_domain).first()
         if shop:
-            shop.is_installed = False
-            shop.save()
-            print(f"Shop {shop_domain} marked as uninstalled.")
+            shop.delete()
+            print(f"Shop {shop_domain} has been deleted.")
 
     return HttpResponse("Webhook processed", status=200)
 import requests
