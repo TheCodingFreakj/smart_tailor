@@ -217,7 +217,7 @@ class ShopifyCallbackView(View):
             save_access_token(shop, access_token)
 
             # Register the app/uninstalled webhook
-            webhook_url = f"{settings.SHOPIFY_APP_URL}/shopify/uninstall-webhook/"
+            webhook_url = f"{settings.SHOPIFY_APP_URL}/webhooks/app_uninstalled/"
             success, message = register_uninstall_webhook(shop, access_token, webhook_url)
             if not success:
                 print(f"Failed to register uninstall webhook: {message}")
