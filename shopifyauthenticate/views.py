@@ -43,6 +43,10 @@ class ShopifyInstallView(View):
         hmac_value = request.GET.get('hmac')
         query_params = request.GET.dict()
 
+        # Ensure 'shop' is valid
+        if not shop:
+            return HttpResponseBadRequest("Invalid 'shop' parameter.")
+
         # Remove 'hmac' from query params before validation
         query_params.pop('hmac', None)
 
@@ -56,15 +60,21 @@ class ShopifyInstallView(View):
 
         # Verify HMAC
         if hmac_value != calculated_hmac:
+            print("HMAC validation failed.")
+            print(f"Provided HMAC: {hmac_value}")
+            print(f"Calculated HMAC: {calculated_hmac}")
             return HttpResponseBadRequest("HMAC validation failed.")
 
         # Proceed with redirection
         api_key = settings.SHOPIFY_API_KEY
         redirect_uri = f"{settings.SHOPIFY_APP_URL}/shopify/callback/"
         scopes = "read_products,write_products,read_orders,write_orders"
+
         oauth_url = f"https://{shop}/admin/oauth/authorize?client_id={api_key}&scope={scopes}&redirect_uri={redirect_uri}&state=nonce"
-        
+        print(f"Redirecting to OAuth URL: {oauth_url}")
+
         return redirect(oauth_url)
+
 
     
 
