@@ -8,6 +8,7 @@ from urllib.parse import urlencode
 import hashlib
 import hmac
 from .models import ShopifyStore
+from .middleware import verify_installation_required
 
 
 def save_access_token(shop, access_token):
@@ -100,6 +101,7 @@ def verify_shop(request):
     return False
 
 @csrf_exempt
+@verify_installation_required
 def check_installation_status(request):
     
 
