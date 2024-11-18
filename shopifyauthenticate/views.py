@@ -8,7 +8,7 @@ from urllib.parse import urlencode
 import hashlib
 import hmac
 from .models import ShopifyStore
-from .middleware import verify_installation_required
+
 
 
 def save_access_token(shop, access_token):
