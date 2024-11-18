@@ -3,7 +3,7 @@ import json
 import requests
 from django.shortcuts import redirect
 from django.conf import settings
-from django.http import JsonResponse
+from django.http import HttpResponseBadRequest, JsonResponse
 from urllib.parse import urlencode
 import hashlib
 import hmac
@@ -34,18 +34,38 @@ from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.views import View
 
+import hashlib
+import hmac
+
 class ShopifyInstallView(View):
     def get(self, request, *args, **kwargs):
         shop = request.GET.get('shop')
+        hmac_value = request.GET.get('hmac')
+        query_params = request.GET.dict()
+
+        # Remove 'hmac' from query params before validation
+        query_params.pop('hmac', None)
+
+        # Create the message and calculate HMAC
+        message = "&".join(f"{key}={value}" for key, value in sorted(query_params.items()))
+        calculated_hmac = hmac.new(
+            settings.SHOPIFY_API_SECRET.encode('utf-8'),
+            message.encode('utf-8'),
+            hashlib.sha256
+        ).hexdigest()
+
+        # Verify HMAC
+        if hmac_value != calculated_hmac:
+            return HttpResponseBadRequest("HMAC validation failed.")
+
+        # Proceed with redirection
         api_key = settings.SHOPIFY_API_KEY
         redirect_uri = f"{settings.SHOPIFY_APP_URL}/shopify/callback/"
-        
-        # Define the scopes you need for your app
         scopes = "read_products,write_products,read_orders,write_orders"
-        
         oauth_url = f"https://{shop}/admin/oauth/authorize?client_id={api_key}&scope={scopes}&redirect_uri={redirect_uri}&state=nonce"
         
         return redirect(oauth_url)
+
     
 
 import json
