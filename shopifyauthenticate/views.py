@@ -95,23 +95,8 @@ import re
 def verify_shop(request):
     # Get the shop from the request (in this case from the `Referer` header)
     referer = request.META.get('HTTP_REFERER')
-
-    if referer:
-        # Extract the domain from the referer header
-        referer_domain = re.search(r'https?://(.*?)/', referer)
-
-        if referer_domain:
-            shop_domain = referer_domain.group(1)
-
-            # Check if the shop is installed in your app
-            shop = ShopifyStore.objects.filter(shop_name=shop_domain).first()
-            
-            if shop:
-                # Proceed to the public URL logic
-                return True
-            else:
-                # Shop is not found or not installed
-                return False
+    if referer == 'https://admin.shopify.com/':
+        return True
     return False
 
 @csrf_exempt
