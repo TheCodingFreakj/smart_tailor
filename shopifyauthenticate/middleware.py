@@ -9,9 +9,9 @@ class ShopifyHMACVerificationMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        print(f"request.path---->{request.path}")
+        print(f"request.path---->{request}")
         # Only validate HMAC for specific endpoints (e.g., those related to Shopify)
-        if 'dashboard' in request.path:
+        if request.path == "/check-installation/":
             # Extract the HMAC from the request headers
             hmac_received = request.META.get('HTTP_X_SHOPIFY_HMAC_SHA256')
             print(f"hmac_received----------->{hmac_received}")
