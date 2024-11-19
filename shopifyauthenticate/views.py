@@ -1,5 +1,6 @@
 import base64
 import json
+import uuid
 import requests
 from django.shortcuts import redirect
 from django.conf import settings
@@ -76,6 +77,9 @@ class ShopifyInstallView(View):
         api_key = settings.SHOPIFY_API_KEY
         redirect_uri = f"{settings.SHOPIFY_APP_URL}/shopify/callback/"
         scopes = "read_products,write_products,read_orders,write_orders"
+        # Create a session token (it could be a random UUID or something more specific)
+        session_token = str(uuid.uuid4())
+        request.session['shopify_oauth_session_token'] = session_token
 
         oauth_url = f"https://{shop}/admin/oauth/authorize?client_id={api_key}&scope={scopes}&redirect_uri={redirect_uri}&state=nonce"
         print(f"Redirecting to OAuth URL: {oauth_url}")
@@ -116,9 +120,7 @@ def check_installation_status(request):
         data = json.loads(request.body)
         shop_id = data.get("shop")
         
-        token = request.headers.get("Authorization", "").split("Bearer ")[-1]
-
-        print(token)
+       
         # if not token:
         #     return HttpResponseForbidden("Access denied. This store is not authorized to use the app.")
 
@@ -220,6 +222,7 @@ class ShopifyCallbackView(View):
     def get(self, request):
         shop = request.GET.get('shop')
         code = request.GET.get('code')
+        
 
         # Exchange the code for an access token
         token_url = f"https://{shop}/admin/oauth/access_token"
@@ -248,10 +251,13 @@ class ShopifyCallbackView(View):
 
             # Redirect to React app
             react_home_url = f"https://smart-tailor-frnt.onrender.com/dashboard/{shop}/{shopRecord.id}"
-            if code:
-               return redirect(react_home_url)
+
+
+            # Validate session token (ensures this was a valid redirect flow)
+            if not request.session.get('shopify_oauth_session_token'):
+                return redirect("https://smart-tailor-frnt.onrender.com/error")
             else:
-               return redirect("https://smart-tailor-frnt.onrender.com/error")
+                return redirect(react_home_url)
 
 
         # Redirect to an error page if token exchange fails
