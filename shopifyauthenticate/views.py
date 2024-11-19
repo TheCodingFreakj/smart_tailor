@@ -102,9 +102,7 @@ def check_installation_status(request):
     print(shopify_hmac)
     print(request.GET)
 
-    # Ensure the HMAC is present
-    if not shopify_hmac:
-        return HttpResponseForbidden("Access denied. This store is not authorized to use the app.")
+   
         
     
     if request.method != "POST":
@@ -117,6 +115,11 @@ def check_installation_status(request):
         # Parse JSON body
         data = json.loads(request.body)
         shop_id = data.get("shop")
+        code = data.get("code")
+
+         # Ensure the HMAC is present
+        if not code:
+           return HttpResponseForbidden("Access denied. This store is not authorized to use the app.")
         
         if not shop_id:
             return JsonResponse(
@@ -242,7 +245,7 @@ class ShopifyCallbackView(View):
             shopRecord = ShopifyStore.objects.filter(shop_name=shop).first()    
 
             # Redirect to React app
-            react_home_url = f"https://smart-tailor-frnt.onrender.com/dashboard/{shopRecord.id}"
+            react_home_url = f"https://smart-tailor-frnt.onrender.com/dashboard/{code}/{shopRecord.id}"
             return redirect(react_home_url)
 
         # Redirect to an error page if token exchange fails
