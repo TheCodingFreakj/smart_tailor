@@ -97,8 +97,15 @@ from django.http import HttpResponseForbidden
 def check_installation_status(request):
     
             # Ensure the HMAC is present
-    if not hasattr(request, 'shopify_hmac') or not request.shopify_hmac:
+    shopify_hmac = request.GET.get('shopify_hmac')
+
+    print(shopify_hmac)
+    print(request.GET)
+
+    # Ensure the HMAC is present
+    if not shopify_hmac:
         return HttpResponseForbidden("Access denied. This store is not authorized to use the app.")
+        
     
     if request.method != "POST":
         return JsonResponse(
