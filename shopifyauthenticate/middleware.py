@@ -9,6 +9,7 @@ class ShopifyHMACVerificationMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
+        print(f"request.path---->{request.path}")
         # Only validate HMAC for specific endpoints (e.g., those related to Shopify)
         if 'dashboard' in request.path:
             # Extract the HMAC from the request headers
