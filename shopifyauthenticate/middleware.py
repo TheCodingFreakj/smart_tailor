@@ -11,9 +11,12 @@ class ShopifyHMACVerificationMiddleware:
     def __call__(self, request):
         print(f"request.path---->{request.path}")
             # Extract the HMAC from the request headers
-        hmac_received = request.META.get('HTTP_X_SHOPIFY_HMAC_SHA256')
-        request.shopify_hmac = hmac_received
-        print(f"hmac_received----------->{hmac_received}")
+
+        if request.path == '/shopify/callback/':
+                hmac_received = request.META.get('HTTP_X_SHOPIFY_HMAC_SHA256')
+                request.shopify_hmac = hmac_received
+                print(f"hmac_received----------->{hmac_received}")    
+
         # If the request is valid, pass it along
         response = self.get_response(request)
         return response
