@@ -115,10 +115,7 @@ def check_installation_status(request):
         # Parse JSON body
         data = json.loads(request.body)
         shop_id = data.get("shop")
-        
-        token = request.headers.get("Authorization", "").split("Bearer ")[-1]
-        if not token:
-            return HttpResponseForbidden("Access denied. This store is not authorized to use the app.")
+
 
         
         if not shop_id:
