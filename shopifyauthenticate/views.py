@@ -90,20 +90,16 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
 from django.http import HttpResponseForbidden
-from django.shortcuts import render
-import re
 
-def verify_shop(request):
-    # Get the shop from the request (in this case from the `Referer` header)
-    referer = request.META.get('HTTP_REFERER')
-    if referer == 'https://admin.shopify.com/':
-        return True
-    return False
+
 
 @csrf_exempt
 def check_installation_status(request):
-    # if verify_shop(request) == False:
-    #     return HttpResponseForbidden("Access denied. This store is not authorized to use the app.")
+    
+            # Ensure the HMAC is present
+    if not hasattr(request, 'shopify_hmac') or not request.shopify_hmac:
+        return HttpResponseForbidden("Access denied. This store is not authorized to use the app.")
+    
     if request.method != "POST":
         return JsonResponse(
             {"installed": False, "error": "Invalid request method"}, 
