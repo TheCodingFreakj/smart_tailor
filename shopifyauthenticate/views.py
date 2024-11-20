@@ -100,8 +100,6 @@ from django.http import HttpResponseForbidden
 @csrf_exempt
 def check_installation_status(request):
     print(request.GET)
-    print(request.url_paths)
-    
   
     tracked_paths = request.session.get('url_paths', [])
     print(tracked_paths)
