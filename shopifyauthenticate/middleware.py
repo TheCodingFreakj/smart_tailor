@@ -2,13 +2,15 @@ from urllib.parse import urlparse, parse_qs
 from django.utils.deprecation import MiddlewareMixin
 
 class ShopifyAuthMiddleware(MiddlewareMixin):
-    def __init__(self):
-        self.url_paths = []  
+
     
     def process_request(self, request):
         print("Executing before the view.")
-        self.url_paths.append(request.path)
-        request.path_params = self.url_paths
+        # Check if 'url_paths' exists in the session, if not, initialize it
+        if 'url_paths' not in request.session:
+            request.session['url_paths'] = []
+                # Append the current request path to the session-stored list
+        request.session['url_paths'].append(request.path)
         return None  
 
     def process_response(self, request, response):
