@@ -7,6 +7,7 @@ class ShopifyStore(models.Model):
     updated_at = models.DateTimeField(auto_now=True)  # Timestamp when the record was last updated
     is_installed = models.BooleanField(default=False)
     first_time = models.BooleanField(default=True)
+    
 
     def __str__(self):
         return f"{self.shop_name} - {self.access_token[:10]}..."  # Truncate the token for display

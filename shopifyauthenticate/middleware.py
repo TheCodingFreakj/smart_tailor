@@ -7,6 +7,8 @@ class ShopifyHMACVerificationMiddleware:
     def __call__(self, request):
         print(f"request.path---->{request.path}")
             # Extract the HMAC from the request headers
+        referer = request.META.get('HTTP_REFERER', 'Unknown')    
+        print(f"referer------------------>{referer}")    
 
         if request.path == '/shopify/install/':
                 full_url = request.build_absolute_uri()
