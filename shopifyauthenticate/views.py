@@ -254,7 +254,7 @@ class ShopifyCallbackView(View):
 
 
             # Validate session token (ensures this was a valid redirect flow)
-            if not request.session.get('shopify_oauth_session_token'):
+            if not code:
                 return redirect("https://smart-tailor-frnt.onrender.com/error")
             else:
                 return redirect(react_home_url)
