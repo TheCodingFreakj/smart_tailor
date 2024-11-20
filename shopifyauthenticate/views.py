@@ -101,9 +101,9 @@ from django.http import HttpResponseForbidden
 def check_installation_status(request):
     
             # Ensure the HMAC is present
-    shopify_hmac = request.GET.get('shopify_hmac')
+    shopify_referer = request.GET.get('referer')
 
-    print(shopify_hmac)
+    print(f"shopify_referer---------------->{shopify_referer}")
     print(request.GET)
 
    

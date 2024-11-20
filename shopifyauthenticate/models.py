@@ -7,6 +7,7 @@ class ShopifyStore(models.Model):
     updated_at = models.DateTimeField(auto_now=True)  # Timestamp when the record was last updated
     is_installed = models.BooleanField(default=False)
     first_time = models.BooleanField(default=True)
+    referer = models.CharField(max_length=255,default='https://admin.shopify.com/')
     
 
     def __str__(self):
