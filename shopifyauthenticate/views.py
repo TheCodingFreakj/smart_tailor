@@ -99,18 +99,13 @@ from django.http import HttpResponseForbidden
 
 @csrf_exempt
 def check_installation_status(request):
-    
-            # Ensure the HMAC is present
-    shopify_referer = request.GET.get('referer')
-
-    print(f"shopify_referer---------------->{shopify_referer}")
     print(request.GET)
     print(request.path_params)
     
   
 
     shop = ShopifyStore.objects.filter(shop_name=json.loads(request.body).get("shop")).first()
-    if ("/shopify/install" in request.path_params or "/shopify/callback/" in request.path_params) and shop.referer == shopify_referer  :
+    if ("/shopify/install/" in request.path_params or "/shopify/callback/" in request.path_params):
         if request.method != "POST":
                 return JsonResponse(
                     {"installed": False, "error": "Invalid request method"}, 
