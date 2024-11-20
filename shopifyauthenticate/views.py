@@ -100,12 +100,12 @@ from django.http import HttpResponseForbidden
 @csrf_exempt
 def check_installation_status(request):
     print(request.GET)
-    print(request.path_params)
+    print(request.url_paths)
     
   
 
     shop = ShopifyStore.objects.filter(shop_name=json.loads(request.body).get("shop")).first()
-    if ("/shopify/install/" in request.path_params or "/shopify/callback/" in request.path_params):
+    if ("/shopify/install/" in request.url_paths or "/shopify/callback/" in request.url_paths):
         if request.method != "POST":
                 return JsonResponse(
                     {"installed": False, "error": "Invalid request method"}, 
