@@ -105,7 +105,7 @@ def check_installation_status(request):
   
 
     shop = ShopifyStore.objects.filter(shop_name=json.loads(request.body).get("shop")).first()
-    if ("/shopify/install/" in request.url_paths or "/shopify/callback/" in request.url_paths):
+    if ("/shopify/install/" in request.path_params or "/shopify/callback/" in request.path_params):
         if request.method != "POST":
                 return JsonResponse(
                     {"installed": False, "error": "Invalid request method"}, 
