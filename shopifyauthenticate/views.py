@@ -109,24 +109,7 @@ def check_installation_status(request):
     print(request.GET)
     data = json.loads(request.body)
     shop_id = data.get("shop")
-    shop = ShopifyStore.objects.filter(id=shop_id).first()
-    now = datetime.now()
-    now = make_aware(now)
-    print("shop.urlsPassed--------->",shop.urlsPassed.split(","))
 
-    # Calculate the range
-    time_difference = timedelta(minutes=1)
-    lower_bound = now - time_difference
-
-    print(shop.updated_at, lower_bound)
-    urls = [url.strip() for url in shop.urlsPassed.split(",")]
-
-    if '/shopify/callback/' in urls and '/shopify/install/' in urls and shop.updated_at >= lower_bound:
-        
-
-        return JsonResponse({ "message": "Validation  Done" }, status=200)
-    else:
-        return JsonResponse({ "error": "Validation  Failed" }, status=500)
 
 
 

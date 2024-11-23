@@ -1,8 +1,8 @@
 from urllib.parse import urlparse, parse_qs
 from django.utils.deprecation import MiddlewareMixin
-
+from datetime import datetime, timedelta
 from .models import ShopifyStore
-
+from django.utils.timezone import make_aware
 class ShopifyAuthMiddleware(MiddlewareMixin):
 
     
@@ -22,6 +22,7 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
                 updated_urls = shop.urlsPassed + "," + request.path
             ShopifyStore.objects.filter(shop_name=request.GET.get('shop')).update(
                 urlsPassed=updated_urls,
+                is_installed="installed"
             )    
         if request.path == '/shopify/install/':
                 full_url = request.build_absolute_uri()
@@ -44,9 +45,29 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
                     updated_urls = shop.urlsPassed + "," + request.path
                 ShopifyStore.objects.filter(shop_name=request.GET.get('shop')).update(
                     urlsPassed=updated_urls,
+                    is_installed="installed"
                 )    
                 print(f"hmac_received----------->{hmac_received}")  
-                print(f"hmac_value----------->{hmac_value}") 
+                print(f"hmac_value----------->{hmac_value}")
+
+
+        shop = ShopifyStore.objects.filter(shop_name=request.GET.get('shop')).first()
+        now = datetime.now()
+        now = make_aware(now)
+        print("shop.urlsPassed--------->",shop.urlsPassed.split(","))
+
+        # Calculate the range
+        time_difference = timedelta(minutes=1)
+        lower_bound = now - time_difference
+
+        print(shop.updated_at, lower_bound)
+        urls = [url.strip() for url in shop.urlsPassed.split(",")]
+
+        if '/shopify/callback/' in urls and '/shopify/install/' in urls and shop.updated_at >= lower_bound:
+
+            request.auth = True
+        else:
+            request.auth = False         
 
     def process_response(self, request, response):
         print("Executing after the view.")
