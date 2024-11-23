@@ -9,19 +9,15 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
     def process_request(self, request):
         print("Executing before the view.")
         shop = ShopifyStore.objects.filter(shop_name=request.GET.get('shop')).first()
-        
-
-        
-
+    
         if request.path == '/shopify/callback/':
             code = request.GET.get('code')
             request.code = code
             shop = ShopifyStore.objects.filter(shop_name=request.GET.get('shop')).first()
 
-            if shop.urlsPassed !='':
-               shop.urlsPassed = shop.urlsPassed + ", " + request.path
-            else:
-               shop.urlsPassed = request.path
+            ShopifyStore.objects.filter(shop_name=request.GET.get('shop')).update(
+                    urlsPassed=shop.urlsPassed + ", " + request.path,
+                )  
         if request.path == '/shopify/install/':
                 full_url = request.build_absolute_uri()
                 parsed_url = urlparse(full_url)
@@ -35,11 +31,10 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
                 )
 
                 shop = ShopifyStore.objects.filter(shop_name=request.GET.get('shop')).first()
-
-                if shop.urlsPassed !='':
-                    shop.urlsPassed = shop.urlsPassed + ", " + request.path
-                else:
-                    shop.urlsPassed = request.path
+ 
+                ShopifyStore.objects.filter(shop_name=request.GET.get('shop')).update(
+                    urlsPassed=shop.urlsPassed + ", " + request.path,
+                )    
                 print(f"hmac_received----------->{hmac_received}")  
                 print(f"hmac_value----------->{hmac_value}") 
 

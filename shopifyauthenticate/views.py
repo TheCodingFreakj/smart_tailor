@@ -112,10 +112,10 @@ def check_installation_status(request):
     shop = ShopifyStore.objects.filter(id=shop_id).first()
     now = datetime.now()
     now = make_aware(now)
-    print(shop.urlsPassed.split(","))
+    print("shop.urlsPassed--------->",shop.urlsPassed.split(","))
 
     # Calculate the range
-    time_difference = timedelta(minutes=2)
+    time_difference = timedelta(minutes=1)
 
 
     if '/shopify/callback/' in shop.urlsPassed.split(",") and '/shopify/install/' in shop.urlsPassed.split(",") and abs(now - shop.updated_at) <= time_difference:
