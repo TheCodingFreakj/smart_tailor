@@ -129,7 +129,7 @@ def check_installation_status(request):
         )
         return JsonResponse({ "message": "Validation  Done" }, status=200)
     else:
-        return redirect("https://smart-tailor-frnt.onrender.com/error")
+        return JsonResponse({ "error": "Validation  Failed" }, status=500)
 
 
 
