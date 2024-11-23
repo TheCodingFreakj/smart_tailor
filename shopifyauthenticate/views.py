@@ -116,9 +116,12 @@ def check_installation_status(request):
 
     # Calculate the range
     time_difference = timedelta(minutes=1)
+    lower_bound = now - time_difference
+
+    print(shop.updated_at, lower_bound)
 
 
-    if '/shopify/callback/' in shop.urlsPassed.split(",") and '/shopify/install/' in shop.urlsPassed.split(",") and abs(now - shop.updated_at) <= time_difference:
+    if '/shopify/callback/' in shop.urlsPassed.split(",") and '/shopify/install/' in shop.urlsPassed.split(",") and shop.updated_at >= lower_bound:
         
         # Attempt to update the existing record, only if it exists
         ShopifyStore.objects.filter(id=shop_id).update(
