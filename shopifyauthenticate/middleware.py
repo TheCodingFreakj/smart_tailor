@@ -8,16 +8,21 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
     
     def process_request(self, request):
         print("Executing before the view.")
-        shop = ShopifyStore.objects.filter(shop_name=request.GET.get('shop')).first()
+        
     
         if request.path == '/shopify/callback/':
             code = request.GET.get('code')
             request.code = code
             shop = ShopifyStore.objects.filter(shop_name=request.GET.get('shop')).first()
 
+            if '/shopify/callback/' in shop.urlsPassed.split(","):
+                    updated_urls = ','.join(url.strip() for url in shop.urlsPassed.split(',') if url.strip() != '/shopify/callback/') + ', /shopify/callback/'
+            else:
+                # Add the new path if '/shopify/callback' is not found
+                updated_urls = shop.urlsPassed + "," + request.path
             ShopifyStore.objects.filter(shop_name=request.GET.get('shop')).update(
-                    urlsPassed=shop.urlsPassed + ", " + request.path,
-                )  
+                urlsPassed=updated_urls,
+            )    
         if request.path == '/shopify/install/':
                 full_url = request.build_absolute_uri()
                 parsed_url = urlparse(full_url)
@@ -31,9 +36,14 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
                 )
 
                 shop = ShopifyStore.objects.filter(shop_name=request.GET.get('shop')).first()
- 
+
+                if '/shopify/install/' in shop.urlsPassed.split(","):
+                     updated_urls = ','.join(url.strip() for url in shop.urlsPassed.split(',') if url.strip() != '/shopify/install/') + ', /shopify/install/'
+                else:
+                    # Add the new path if '/shopify/install' is not found
+                    updated_urls = shop.urlsPassed + "," + request.path
                 ShopifyStore.objects.filter(shop_name=request.GET.get('shop')).update(
-                    urlsPassed=shop.urlsPassed + ", " + request.path,
+                    urlsPassed=updated_urls,
                 )    
                 print(f"hmac_received----------->{hmac_received}")  
                 print(f"hmac_value----------->{hmac_value}") 

@@ -123,10 +123,7 @@ def check_installation_status(request):
 
     if '/shopify/callback/' in urls and '/shopify/install/' in urls and shop.updated_at >= lower_bound:
         
-        # Attempt to update the existing record, only if it exists
-        ShopifyStore.objects.filter(id=shop_id).update(
-            urlsPassed='',
-        )
+
         return JsonResponse({ "message": "Validation  Done" }, status=200)
     else:
         return JsonResponse({ "error": "Validation  Failed" }, status=500)
