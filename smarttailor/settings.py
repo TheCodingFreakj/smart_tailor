@@ -25,7 +25,15 @@ SECRET_KEY = 'django-insecure-99!92^)83vf7=(cm5hx&^gs5%i6)77pt0c9+6#$m3pkwk-4111
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "127.0.0.1",
+    "localhost",
+    "smart-tailor-frnt.onrender.com",
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://smart-tailor-frnt.onrender.com",
+]
 
 
 # Application definition

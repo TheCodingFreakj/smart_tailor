@@ -4,6 +4,7 @@ from django.shortcuts import redirect
 import requests
 from shopifyauthenticate.models import ShopifyStore
 def dashboard(request):
+    print(request.headers)
     data = json.loads(request.body)
     shop_id = data.get("shopId")
     shop = ShopifyStore.objects.filter(id=shop_id).first()
