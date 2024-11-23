@@ -1,4 +1,5 @@
 import base64
+from datetime import datetime, timedelta
 import json
 import uuid
 import requests
@@ -109,56 +110,24 @@ def check_installation_status(request):
     data = json.loads(request.body)
     shop_id = data.get("shop")
     shop = ShopifyStore.objects.filter(shop_name=shop_id).first()
+    now = datetime.now()
+    time_difference = timedelta(minutes=5)
 
-    
-  
-    if not shop.current_hmac != shop.calculated_hmac:
+    # Calculate the range
+    lower_bound = now - time_difference
+    upper_bound = now + time_difference
+
+    # Check if `shop.updated_at` is within the range
+    if lower_bound <= shop.updated_at <= upper_bound:
+        print("shop.updated_at is within 5 minutes before or after now.")
+    else:
+        print("shop.updated_at is not within the 5-minute range.")
+
+    if not lower_bound <= shop.updated_at <= upper_bound and ('/shopify/callback/' not in shop.urlsPassed or '/shopify/install/' not in shop.urlsPassed):
         return redirect("https://smart-tailor-frnt.onrender.com/error")
-    try:
-        # Parse JSON body
-
-        
     
-        # if not token:
-        #     return HttpResponseForbidden("Access denied. This store is not authorized to use the app.")
-
-        
-        if not shop_id:
-            return JsonResponse(
-                {"installed": False, "error": "Shop parameter is missing or invalid"}, 
-                status=400
-            )
-
-        # Check if the shop exists in the database
-        shop = ShopifyStore.objects.filter(shop_name=shop_id).first()
-
-        if shop:
-            # Check if the app is installed and if it's the first installation
-            if shop.is_installed:
-                return JsonResponse({
-                    "installed": shop.is_installed, 
-                    "first_time": shop.first_time,
-                    "access_token": shop.access_token
-                })
-            else:
-                return JsonResponse({
-                    "installed": False, 
-                    "error": "App is not fully installed"
-                }, status=403)
-        else:
-            # Handle first-time installation case
-            return JsonResponse({
-                "installed": False, 
-                "first_time": True,
-                "message": "This is the first installation. Proceed with setup."
-            })
-
-
-    except json.JSONDecodeError:
-        return JsonResponse(
-            {"installed": False, "error": "Invalid JSON body"}, 
-            status=400
-        )
+    else:
+        return JsonResponse({ "message": "Validation  Done" }, status=200)
 
  
         
@@ -253,7 +222,8 @@ class ShopifyCallbackView(View):
             if not success:
                 print(f"Failed to register uninstall webhook: {message}")
 
-            shopRecord = ShopifyStore.objects.filter(shop_name=shop).first()    
+            shopRecord = ShopifyStore.objects.filter(shop_name=shop).first()  
+            shopRecord.is_installed == "installed"  
 
             # Redirect to React app
             react_home_url = f"https://smart-tailor-frnt.onrender.com/dashboard/{shop}/{shopRecord.id}"
