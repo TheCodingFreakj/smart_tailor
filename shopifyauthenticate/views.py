@@ -95,15 +95,7 @@ from django.views.decorators.csrf import csrf_exempt
 import hashlib
 import hmac
 
-# def verify_shopify_hmac(stored_hmac, shared_secret):
-#     hmac_provided = stored_hmac
-#     message = "&".join(f"{k}={v}" for k, v in sorted(params.items()))
-#     generated_hmac = hmac.new(
-#         shared_secret.encode('utf-8'),
-#         message.encode('utf-8'),
-#         hashlib.sha256
-#     ).hexdigest()
-#     return hmac_provided == generated_hmac
+
 
 @csrf_exempt
 def check_installation_status(request):
@@ -114,8 +106,8 @@ def check_installation_status(request):
 
     
   
-    # if not verify_shopify_hmac(shop.current_hmac, settings.SHOPIFY_API_SECRET):
-    #     return redirect("https://smart-tailor-frnt.onrender.com/error")
+    if not request.body.hmac != shop.current_hmac:
+        return redirect("https://smart-tailor-frnt.onrender.com/error")
     try:
         # Parse JSON body
 
@@ -227,6 +219,7 @@ class ShopifyCallbackView(View):
     def get(self, request):
         shop = request.GET.get('shop')
         code = request.GET.get('code')
+        shopify_hmac = request.headers.get('X-Shopify-Hmac-Sha256')
         
 
         # Exchange the code for an access token
@@ -255,7 +248,7 @@ class ShopifyCallbackView(View):
             shopRecord = ShopifyStore.objects.filter(shop_name=shop).first()    
 
             # Redirect to React app
-            react_home_url = f"https://smart-tailor-frnt.onrender.com/dashboard/{shop}/{shopRecord.id}"
+            react_home_url = f"https://smart-tailor-frnt.onrender.com/dashboard/{shop}/{shopRecord.id}/{shopify_hmac}"
 
 
             # Validate session token (ensures this was a valid redirect flow)
