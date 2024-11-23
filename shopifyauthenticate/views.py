@@ -256,7 +256,7 @@ class ShopifyCallbackView(View):
             shopRecord = ShopifyStore.objects.filter(shop_name=shop).first()    
 
             # Redirect to React app
-            react_home_url = f"https://smart-tailor-frnt.onrender.com/dashboard/{shop}/{shopRecord.id}/{shopify_hmac.current_hmac}"
+            react_home_url = f"https://smart-tailor-frnt.onrender.com/dashboard/{shop}/{shopRecord.id}"
 
 
             # Validate session token (ensures this was a valid redirect flow)
