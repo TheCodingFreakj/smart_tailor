@@ -2,7 +2,8 @@ from django.http import HttpResponse
 import requests
 from shopifyauthenticate.models import ShopifyStore
 def home(request):
-    shop = ShopifyStore.objects.filter(id=request.body.shopId).first()
+    print(request.body)
+    shop = ShopifyStore.objects.filter(shop_name=request.body.shopId).first()
     headers = {
         'X-Shopify-Access-Token': shop.access_token
     }
