@@ -66,6 +66,12 @@ class ShopifyInstallView(View):
             hashlib.sha256
         ).hexdigest()
 
+        ShopifyStore.objects.update_or_create(
+                    shop_name=request.GET.get('shop'),  # Use the shop name as the unique identifier
+                    defaults={'calculated_hmac': calculated_hmac}  # Update the access token
+        )
+
+
         # Verify HMAC
         if hmac_value != calculated_hmac:
             print("HMAC validation failed.")
@@ -106,7 +112,7 @@ def check_installation_status(request):
 
     
   
-    if not request.code:
+    if not shop.current_hmac != shop.calculated_hmac:
         return redirect("https://smart-tailor-frnt.onrender.com/error")
     try:
         # Parse JSON body
@@ -172,6 +178,8 @@ def uninstall_webhook(request):
     hash_calculated = base64.b64encode(
         hmac.new(secret, data, hashlib.sha256).digest()
     ).decode()
+
+
 
     if shopify_hmac != hash_calculated:
         return HttpResponse("Unauthorized", status=401)

@@ -9,6 +9,7 @@ class ShopifyStore(models.Model):
     first_time = models.BooleanField(default=True)
     referer = models.CharField(max_length=255,default='https://admin.shopify.com/')
     current_hmac = models.CharField(max_length=255, unique=True, default="")
+    calculated_hmac=models.CharField(max_length=255, unique=True, default="")
     
 
     def __str__(self):
