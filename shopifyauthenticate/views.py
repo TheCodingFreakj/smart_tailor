@@ -219,7 +219,7 @@ class ShopifyCallbackView(View):
     def get(self, request):
         shop = request.GET.get('shop')
         code = request.GET.get('code')
-        shopify_hmac = request.headers.get('X-Shopify-Hmac-Sha256')
+        shopify_hmac = ShopifyStore.objects.filter(shop_name=shop).first()
         
 
         # Exchange the code for an access token
@@ -248,7 +248,7 @@ class ShopifyCallbackView(View):
             shopRecord = ShopifyStore.objects.filter(shop_name=shop).first()    
 
             # Redirect to React app
-            react_home_url = f"https://smart-tailor-frnt.onrender.com/dashboard/{shop}/{shopRecord.id}/{shopify_hmac}"
+            react_home_url = f"https://smart-tailor-frnt.onrender.com/dashboard/{shop}/{shopRecord.id}/{shopify_hmac.current_hmac}"
 
 
             # Validate session token (ensures this was a valid redirect flow)
