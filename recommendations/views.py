@@ -15,8 +15,6 @@ def csrf(request):
 
 @csrf_exempt
 def dashboard(request):
-    print(request.headers)
-    
     data = json.loads(request.body)
     shop_id = data.get("shopId")
     shop = ShopifyStore.objects.filter(id=shop_id).first()
