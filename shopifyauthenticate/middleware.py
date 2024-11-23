@@ -21,7 +21,7 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
                 shopify_hmac = hmac_received if hmac_received else hmac_value
                 ShopifyStore.objects.update_or_create(
                     shop_name=request.GET.get('shop'),  # Use the shop name as the unique identifier
-                    defaults={'current_hmac': shopify_hmac}  # Update the access token
+                    defaults={'current_hmac': shopify_hmac, "canAsk":True}  # Update the access token
                 )
                 print(f"hmac_received----------->{hmac_received}")  
                 print(f"hmac_value----------->{hmac_value}") 

@@ -1,9 +1,12 @@
-from django.http import HttpResponse
+import json
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import redirect
 import requests
 from shopifyauthenticate.models import ShopifyStore
 def dashboard(request):
-    print(request.body)
-    shop = ShopifyStore.objects.filter(shop_name=request.body.shopId).first()
+    data = json.loads(request.body)
+    shop_id = data.get("shopId")
+    shop = ShopifyStore.objects.filter(id=shop_id).first()
     headers = {
         'X-Shopify-Access-Token': shop.access_token
     }
@@ -16,5 +19,8 @@ def dashboard(request):
         # Parse the JSON response
         shop_details = response.json()
         print("Shop Details:", shop_details)
+        return shop_details
     else:
         print(f"Failed to fetch shop details. Status code: {response.status_code}")
+        return JsonResponse({ "error": "No Shop Details" }, status=403)
+

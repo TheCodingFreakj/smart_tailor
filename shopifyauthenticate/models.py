@@ -10,6 +10,7 @@ class ShopifyStore(models.Model):
     referer = models.CharField(max_length=255,default='https://admin.shopify.com/')
     current_hmac = models.CharField(max_length=255, unique=True, default="")
     calculated_hmac=models.CharField(max_length=255, unique=True, default="")
+    canAsk = models.BooleanField(default=False)
     
 
     def __str__(self):
