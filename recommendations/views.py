@@ -1,6 +1,6 @@
 from django.http import HttpResponse
 import requests
-from ..shopifyauthenticate.models import ShopifyStore
+from shopifyauthenticate.models import ShopifyStore
 def home(request):
     shop = ShopifyStore.objects.filter(id=request.body.shopId).first()
     headers = {
