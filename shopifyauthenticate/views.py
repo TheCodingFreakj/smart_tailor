@@ -114,15 +114,21 @@ def check_installation_status(request):
     now = make_aware(now)
 
     # Calculate the range
-    time_difference = timedelta(microseconds=1)
+    time_difference = timedelta(minutes=2)
 
 
-
-    if not abs(now - shop.updated_at) <= time_difference:
-        return redirect("https://smart-tailor-frnt.onrender.com/error")
-    
-    else:
+    if '/shopify/callback/' in shop.urlsPassed and '/shopify/install/' in shop.urlsPassed and abs(now - shop.updated_at) <= time_difference:
+        
+        # Attempt to update the existing record, only if it exists
+        ShopifyStore.objects.filter(id=shop_id).update(
+            urlsPassed='',
+        )
         return JsonResponse({ "message": "Validation  Done" }, status=200)
+    else:
+        return redirect("https://smart-tailor-frnt.onrender.com/error")
+
+
+
 
  
         
