@@ -3,7 +3,15 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect
 import requests
 from shopifyauthenticate.models import ShopifyStore
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
+
+
+
+
+@ensure_csrf_cookie
+def csrf(request):
+    return JsonResponse({'csrfToken': request.COOKIES.get('csrftoken')})
+
 
 @csrf_exempt
 def dashboard(request):
