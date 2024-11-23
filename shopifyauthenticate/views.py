@@ -101,7 +101,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import hashlib
 import hmac
-
+from django.utils.timezone import make_aware
 
 
 @csrf_exempt
@@ -111,6 +111,7 @@ def check_installation_status(request):
     shop_id = data.get("shop")
     shop = ShopifyStore.objects.filter(id=shop_id).first()
     now = datetime.now()
+    now = make_aware(now)
     time_difference = timedelta(minutes=5)
 
     # Calculate the range
