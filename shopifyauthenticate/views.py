@@ -109,7 +109,7 @@ def check_installation_status(request):
     print(request.GET)
     data = json.loads(request.body)
     shop_id = data.get("shop")
-    shop = ShopifyStore.objects.filter(shop_name=shop_id).first()
+    shop = ShopifyStore.objects.filter(id=shop_id).first()
     now = datetime.now()
     time_difference = timedelta(minutes=5)
 
