@@ -112,19 +112,13 @@ def check_installation_status(request):
     shop = ShopifyStore.objects.filter(id=shop_id).first()
     now = datetime.now()
     now = make_aware(now)
-    time_difference = timedelta(minutes=5)
 
     # Calculate the range
-    lower_bound = now - time_difference
-    upper_bound = now + time_difference
+    time_difference = timedelta(microseconds=1)
 
-    # Check if `shop.updated_at` is within the range
-    if lower_bound <= shop.updated_at <= upper_bound:
-        print("shop.updated_at is within 5 minutes before or after now.")
-    else:
-        print("shop.updated_at is not within the 5-minute range.")
 
-    if not lower_bound <= shop.updated_at <= upper_bound and ('/shopify/callback/' not in shop.urlsPassed or '/shopify/install/' not in shop.urlsPassed):
+
+    if not abs(now - shop.updated_at) <= time_difference:
         return redirect("https://smart-tailor-frnt.onrender.com/error")
     
     else:
