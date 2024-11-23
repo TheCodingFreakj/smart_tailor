@@ -8,6 +8,10 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
     
     def process_request(self, request):
         print("Executing before the view.")
+
+        if request.path == '/shopify/callback/':
+            code = request.GET.get('code')
+            request.code = code
         if request.path == '/shopify/install/':
                 full_url = request.build_absolute_uri()
                 parsed_url = urlparse(full_url)

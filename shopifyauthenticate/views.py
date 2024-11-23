@@ -106,7 +106,7 @@ def check_installation_status(request):
 
     
   
-    if not request.body.hmac != shop.current_hmac:
+    if not request.code:
         return redirect("https://smart-tailor-frnt.onrender.com/error")
     try:
         # Parse JSON body
