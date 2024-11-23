@@ -142,9 +142,23 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # For local development
 ]
 
+CORS_ALLOW_METHODS = [
+    'GET',
+    'POST',
+    'PUT',
+    'DELETE',
+    'OPTIONS',
+]
+
+CORS_ALLOW_HEADERS = [
+    'content-type',
+    'authorization',
+    'x-csrftoken',  # Add any other headers you may need
+]
+
 # Or allow all origins (not recommended for production)
 CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOW_CREDENTIALS = True 
+
 SHOPIFY_API_KEY="22f3fa4aa957b501a54b27373fcf718e"
 SHOPIFY_API_SECRET="530d52c7835d1190d3fb162eaaf12cf8"
 USE_X_FORWARDED_HOST = True
