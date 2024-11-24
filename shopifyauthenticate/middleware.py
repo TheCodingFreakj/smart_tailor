@@ -58,25 +58,26 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
         print("Executing after the view.")
 
  
-                    
-            # Check if the response is a JsonResponse
-        if isinstance(response, JsonResponse):
-            # Extract the JSON data from the response
-            response_data = json.loads(response.content)  # This will give you the dictionary
+        if request.path != '/shopify/install/'  or request.path != '/shopify/callback/':
 
-            if 'shop' in response_data:
-                
-                # Check if 'shop' attribute exists in the response
-                shop = response_data.get('shop')
-                if shop:
-                    # You can now use the 'shop' data to update the database or perform other actions
-                    print(f"Shop data from response: {shop}")
+                # Check if the response is a JsonResponse
+            if isinstance(response, JsonResponse):
+                # Extract the JSON data from the response
+                response_data = json.loads(response.content)  # This will give you the dictionary
+
+                if 'shop' in response_data:
                     
-                    # Example: You can update the database here if needed
-                    shop_instance = ShopifyStore.objects.filter(shop_name=shop).first()
-                    if shop_instance:
-                        shop_instance.urlsPassed = ''
-                        shop_instance.save()
+                    # Check if 'shop' attribute exists in the response
+                    shop = response_data.get('shop')
+                    if shop:
+                        # You can now use the 'shop' data to update the database or perform other actions
+                        print(f"Shop data from response: {shop}")
+                        
+                        # Example: You can update the database here if needed
+                        shop_instance = ShopifyStore.objects.filter(shop_name=shop).first()
+                        if shop_instance:
+                            shop_instance.urlsPassed = ''
+                            shop_instance.save()
 
 
 
