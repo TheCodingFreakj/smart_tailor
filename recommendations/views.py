@@ -116,7 +116,7 @@ class ProductRecommendationView(View):
 
             # Find the script we added earlier
             for script in existing_scripts:
-                if script.src in self.TRACKING_SCRIPT_URL:  # Replace with your script's URL
+                if script.src == self.TRACKING_SCRIPT_URL:  # Replace with your script's URL
                     script_to_remove = script
                     break
 
