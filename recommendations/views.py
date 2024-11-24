@@ -226,7 +226,12 @@ from rest_framework.views import APIView
 class TrackActivityView(APIView):
     def post(self, request, *args, **kwargs):
         # Extract activity data from the request
-        activity_data = request.data
+        activity_data = request.data.activityData
+        shop_name = request.data.shop
+
+        shop = ShopifyStore.objects.filter(shop_name=shop_name).first()
+
+        self.get_related_products(activity_data.product_id, shop)
         
         # You can now process this data (store in DB, analyze, etc.)
         # Example of logging activity to the console (you can replace this with actual processing logic)
@@ -234,3 +239,24 @@ class TrackActivityView(APIView):
 
         # Respond with a success message
         return JsonResponse({"message": "Activity tracked successfully"}, status=status.HTTP_200_OK)
+
+
+    def fetch_shopify_product(self,product_id, shop, access_token):
+        url = f"https://{shop.shop_name}/admin/api/2024-01/products/{product_id}.json"
+        headers = {"X-Shopify-Access-Token": shop.access_token}
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            return response.json()
+        return None
+
+    def get_related_products(self,product_id,shop):
+
+        shopify_products = self.fetch_shopify_product(product_id, shop)
+        ## fetch the category and then retrieve other related products
+        print(shopify_products) 
+        # # Get products in the same category as the viewed product
+        # category = Product.objects.filter(id=product_id).values_list('category', flat=True).first()
+        # if category:
+        #     related_products = Product.objects.filter(category=category).exclude(id=product_id)[:5]
+        #     return related_products
+        # return []

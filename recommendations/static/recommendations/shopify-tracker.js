@@ -1,9 +1,14 @@
 (function() {
     console.log("Tracking script loaded!");
 
-    // // Example: Track page views
-    // document.addEventListener("DOMContentLoaded", function() {
-    //     console.log("Page loaded: ", window.location.href);
+    function getShopFromUrl() {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get("shop");
+      }
+
+    // Get the shop parameter
+    const shop = getShopFromUrl();
+    console.log("Shop parameter:", shop);  
 
            // Track some activity, e.g., product view, cart addition, etc.
     function trackCustomerActivity(activityData) {
@@ -15,7 +20,7 @@
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(activityData),
+            body: {"activityData": JSON.stringify(activityData), "shop":shop},
         })
         .then(response => response.json())
         .then(data => {
@@ -29,9 +34,11 @@
      // Example: Track page view
      const trackPageView = () => {
         const eventData = {
+            customerId: window.customerInfo?.id || null,
             event: 'page_view',
             url: window.location.href,
             timestamp: new Date().toISOString(),
+            action: "track_activity"
         };
         trackCustomerActivity(eventData);
     };
@@ -54,9 +61,11 @@
 
     const trackAddToCart = (productId) => {
         const eventData = {
+            customerId: window.customerInfo?.id || null,
             event: 'add_to_cart',
             product_id: productId,
             timestamp: new Date().toISOString(),
+            action: "track_activity"
         };
         trackCustomerActivity(eventData);
     };
