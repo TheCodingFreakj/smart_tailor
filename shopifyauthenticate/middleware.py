@@ -57,12 +57,14 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
     def process_response(self, request, response):
         print("Executing after the view.")
 
-        if request.path != '/shopify/install/' or request.path != '/shopify/callback/':
+ 
                     
             # Check if the response is a JsonResponse
-            if isinstance(response, JsonResponse):
-                # Extract the JSON data from the response
-                response_data = json.loads(response.content)  # This will give you the dictionary
+        if isinstance(response, JsonResponse):
+            # Extract the JSON data from the response
+            response_data = json.loads(response.content)  # This will give you the dictionary
+
+            if 'shop' in response_data:
                 
                 # Check if 'shop' attribute exists in the response
                 shop = response_data.get('shop')
