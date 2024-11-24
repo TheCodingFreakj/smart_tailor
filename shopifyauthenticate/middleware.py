@@ -44,6 +44,7 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
             ShopifyStore.objects.filter(shop_name=request.GET.get('shop', None)).update(
                     urlsPassed=request.META.get('HTTP_REFERER', ''),
                     is_installed="installed"
+            )
                  
         if request.path == '/shopify/callback/':
             shop = ShopifyStore.objects.filter(shop_name=request.GET.get('shop', None)).first()
