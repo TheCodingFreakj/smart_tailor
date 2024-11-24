@@ -79,11 +79,10 @@ class ShopifyInstallView(View):
             print(f"Provided HMAC: {hmac_value}")
             print(f"Calculated HMAC: {calculated_hmac}")
             return HttpResponseBadRequest("HMAC validation failed.")
-
         # Proceed with redirection
         api_key = settings.SHOPIFY_API_KEY
         redirect_uri = f"{settings.SHOPIFY_APP_URL}/shopify/callback/"
-        scopes = "read_products,write_products,read_orders,write_orders"
+        scopes = "read_products,write_products,read_orders,write_orders,read_script_tags,write_script_tags"
         # Create a session token (it could be a random UUID or something more specific)
         session_token = str(uuid.uuid4())
         request.session['shopify_oauth_session_token'] = session_token
