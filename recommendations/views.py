@@ -35,7 +35,7 @@ def dashboard(request):
             return JsonResponse({ "shop_details": shop_details, "shop":shop }, status=200)
         else:
             print(f"Failed to fetch shop details. Status code: {response.status_code}")
-            return JsonResponse({ "error": "No Shop Details" }, status=403)
+            return JsonResponse({ "error": "No Shop Details","shop":shop }, status=403)
     else:
         if shop:
             shop.urlsPassed = ''

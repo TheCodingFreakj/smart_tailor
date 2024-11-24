@@ -17,9 +17,19 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
         
 
         print("refreer------------------------------------------------>", request.META.get('HTTP_REFERER', ''))
+
+        if request.path == '/shopify/install/':
+            request.auth = True
+        else:
+            request.auth = False    
+        if request.path == '/shopify/callback/':
+            request.auth = True
+        else:
+            request.auth = False    
+
    
                 # Capture and parse the body if it exists
-        if request.method in ['GET', 'POST', 'PUT', 'PATCH']:
+        if request.method in [ 'POST', 'PUT', 'PATCH'] and request.auth == True:
             try:
                 # Decode and parse the request body as JSON
                 body_data = json.loads(request.body.decode('utf-8'))
@@ -49,7 +59,8 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
                     request.auth = False       
             except (json.JSONDecodeError, UnicodeDecodeError) as e:
                 print(f"Error decoding request body: {e}")
-
+        else:
+            request.auth = False
 
     def process_response(self, request, response):
         print("Executing after the view.")
@@ -58,6 +69,13 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
         if isinstance(response, JsonResponse):
             # Extract the JSON data from the response
             response_data = json.loads(response.content)  # This will give you the dictionary
+
+            # Check if 'error' key exists in the response_data dictionary
+            if 'error' in response_data:
+                shop_errored = response_data['shop']
+                print(f"Error found: {shop_errored}")
+                shop_errored.urlsPassed = ''
+                shop_errored.save()
             
             # Check if 'shop' attribute exists in the response
             shop = response_data.get('shop')
