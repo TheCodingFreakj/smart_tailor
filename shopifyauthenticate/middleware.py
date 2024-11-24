@@ -5,6 +5,27 @@ from django.utils.deprecation import MiddlewareMixin
 from datetime import datetime, timedelta
 from .models import ShopifyStore
 from django.utils.timezone import make_aware
+
+
+from django.urls import get_resolver
+
+def list_all_urls():
+    resolver = get_resolver()
+    all_patterns = resolver.url_patterns
+
+    def extract_patterns(patterns, prefix=""):
+        urls = []
+        for pattern in patterns:
+            if hasattr(pattern, 'url_patterns'):  # Included urlpatterns
+                urls.append(f"{prefix}{pattern.pattern}")
+                urls.extend(extract_patterns(pattern.url_patterns, prefix + "    "))
+            else:
+                urls.append(f"{prefix}{pattern.pattern} -> {pattern.callback}")
+        return urls
+
+    return extract_patterns(all_patterns)
+
+
 class ShopifyAuthMiddleware(MiddlewareMixin):
     
     
@@ -16,14 +37,14 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
         print(f"View KWArgs: {view_kwargs}")
         # request.auth = True
         
-
+        print(list_all_urls(),request.auth)
         print("refreer------------------------------------------------>", request.META.get('HTTP_REFERER', ''))
 
         if request.path == '/shopify/install/':
             ShopifyStore.objects.filter(shop_name=request.GET.get('shop', None)).update(
                     urlsPassed=request.META.get('HTTP_REFERER', ''),
                     is_installed="installed"
-                 )
+                 
         if request.path == '/shopify/callback/':
             shop = ShopifyStore.objects.filter(shop_name=request.GET.get('shop', None)).first()
 
@@ -32,7 +53,7 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
                     urlsPassed=shop.urlsPassed + "," + request.META.get('HTTP_REFERER', ''),
                     is_installed="installed"
             )   
-
+         
    
                 # Capture and parse the body if it exists
         if request.method in [ 'POST', 'PUT', 'PATCH']:
@@ -43,11 +64,11 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
                 shop_id = body_data.get("shopId")
                 shop = ShopifyStore.objects.filter(id=shop_id).first()
 
-                if 'https://admin.shopify.com/' not in shop.urlsPassed.split(",") : 
-
-                    if request.path == '/shopify/product-recommendations/':
+                if 'https://admin.shopify.com/' not in shop.urlsPassed.split(","): 
+                    if request.path in list_all_urls():
                         request.auth = True
-                    request.auth = False
+                    else:    
+                        request.auth = False
                 else:
                     request.auth = True    
 
