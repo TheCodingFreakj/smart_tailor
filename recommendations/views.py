@@ -3,6 +3,7 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.views import View
 import requests
+from .models import UserActivity
 from shopifyauthenticate.models import ShopifyStore
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from datetime import datetime, timedelta
@@ -227,23 +228,31 @@ class TrackActivityView(APIView):
     def post(self, request, *args, **kwargs):
         # Extract activity data from the request
         activity_data = request.data
-        shop_name = activity_data.shop
-
-        customerId = activity_data.customerId
-        shop = ShopifyStore.objects.filter(shop_name=shop_name).first()
-
-
-        if activity_data.action == "show_related_viewed_product_based_on_user":
-            self.get_related_products_user(customerId, shop)
-        elif(activity_data.action == "show_related_product_based_on_category"):
-            self.fetch_shopify_product_category(activity_data.product_id, shop)
         
-        # You can now process this data (store in DB, analyze, etc.)
-        # Example of logging activity to the console (you can replace this with actual processing logic)
-        print("Received activity data:", request.data)
 
-        # Respond with a success message
-        return JsonResponse({"message": "Activity tracked successfully"}, status=status.HTTP_200_OK)
+        if activity_data:
+            shop_name = activity_data["shop"]
+            customerId = activity_data["customerId"]
+            shop = ShopifyStore.objects.filter(shop_name=shop_name).first()
+
+            UserActivity.objects.create(
+                shop=shop,
+                user_id=customerId,
+                product_id=activity_data["product_id"],
+                action_type=activity_data["action"],
+            )
+
+            if activity_data.action == "show_related_viewed_product_based_on_user":
+                self.get_related_products_user(customerId, shop)
+            elif(activity_data.action == "show_related_product_based_on_category"):
+                self.fetch_shopify_product_category(activity_data["product_id"], shop)
+            
+            # You can now process this data (store in DB, analyze, etc.)
+            # Example of logging activity to the console (you can replace this with actual processing logic)
+            print("Received activity data:", request.data)
+
+            # Respond with a success message
+            return JsonResponse({"message": "Activity tracked successfully"}, status=status.HTTP_200_OK)
 
 
     def fetch_shopify_product_category(self,product_id, shop):
