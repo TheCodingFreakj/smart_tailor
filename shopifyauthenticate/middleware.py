@@ -4,19 +4,25 @@ from datetime import datetime, timedelta
 from .models import ShopifyStore
 from django.utils.timezone import make_aware
 class ShopifyAuthMiddleware(MiddlewareMixin):
-    shop_global = None
+    
     
     def process_request(self, request):
         print("Executing before the view.")
 
         print("refreer------------------------------------------------>", request.META.get('HTTP_REFERER', ''))
+
+
+        if request.META.get('HTTP_REFERER', '') == 'https://admin.shopify.com/' or request.META.get('HTTP_REFERER', '') == 'https://smart-tailor.onrender.com':
+             request.auth = True
+        else:
+             request.auth = False     
         
     
         if request.path == '/shopify/callback/':
             code = request.GET.get('code')
             request.code = code
             shop = ShopifyStore.objects.filter(shop_name=request.GET.get('shop')).first()
-            shop_global = shop
+            
 
             if '/shopify/callback/' in shop.urlsPassed.split(","):
                     updated_urls = ','.join(url.strip() for url in shop.urlsPassed.split(',') if url.strip() != '/shopify/callback/') + ', /shopify/callback/'
@@ -38,7 +44,7 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
                     shop_name=request.GET.get('shop'),  # Use the shop name as the unique identifier
                     defaults={'current_hmac': shopify_hmac, "canAsk":True}  # Update the access token
                 )
-                shop_global = request.GET.get('shop')
+                
 
                 shop = ShopifyStore.objects.filter(shop_name=request.GET.get('shop')).first()
 
@@ -56,22 +62,22 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
 
 
         
-        now = datetime.now()
-        now = make_aware(now)
-        print("shop.urlsPassed--------->",shop_global.urlsPassed.split(","))
+        # now = datetime.now()
+        # now = make_aware(now)
+        # print("shop.urlsPassed--------->",shop_global.urlsPassed.split(","))
 
-        # Calculate the range
-        time_difference = timedelta(minutes=1)
-        lower_bound = now - time_difference
+        # # Calculate the range
+        # time_difference = timedelta(minutes=1)
+        # lower_bound = now - time_difference
 
-        print(shop_global.updated_at, lower_bound)
-        urls = [url.strip() for url in shop_global.urlsPassed.split(",")]
+        # print(shop_global.updated_at, lower_bound)
+        # urls = [url.strip() for url in shop_global.urlsPassed.split(",")]
 
-        if '/shopify/callback/' in urls and '/shopify/install/' in urls and shop.updated_at >= lower_bound:
+        # if '/shopify/callback/' in urls and '/shopify/install/' in urls and shop.updated_at >= lower_bound:
 
-            request.auth = True
-        else:
-            request.auth = False         
+        #     request.auth = True
+        # else:
+        #     request.auth = False         
 
     def process_response(self, request, response):
         print("Executing after the view.")
