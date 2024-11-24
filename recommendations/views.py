@@ -49,7 +49,8 @@ def dashboard(request):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class ProductRecommendationView(View):
-    TRACKING_SCRIPT_URL = "https://smart-tailor.onrender.com/staticfiles/recommendations/shopify-tracker.js"
+    TRACKING_SCRIPT_URL = ["https://smart-tailor.onrender.com/static/shopify-tracker.js", 'https://smart-tailor.onrender.com/static/recommendations/shopify-tracker.js']
+    # TRACKING_SCRIPT_URL = "https://smart-tailor.onrender.com/staticfiles/recommendations/shopify-tracker.js"
     
     def post(self, request):
         """
@@ -115,7 +116,7 @@ class ProductRecommendationView(View):
 
             # Find the script we added earlier
             for script in existing_scripts:
-                if script.src == self.TRACKING_SCRIPT_URL:  # Replace with your script's URL
+                if script.src in self.TRACKING_SCRIPT_URL:  # Replace with your script's URL
                     script_to_remove = script
                     break
 

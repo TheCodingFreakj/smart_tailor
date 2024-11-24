@@ -70,7 +70,7 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
                 body_data = json.loads(request.body.decode('utf-8'))
                 print(f"Request Body: {body_data}")
                 shop_id = body_data.get("shopId")
-                internal_call = body_data.get(internal_call)
+                internal_call = body_data.get("internal_call")
                 shop = ShopifyStore.objects.filter(id=shop_id).first()
                 
 
