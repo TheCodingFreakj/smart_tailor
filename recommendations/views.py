@@ -230,12 +230,12 @@ class TrackActivityView(APIView):
         shop_name = request.data.shop
 
         shop = ShopifyStore.objects.filter(shop_name=shop_name).first()
-
+        
         self.get_related_products(activity_data.product_id, shop)
         
         # You can now process this data (store in DB, analyze, etc.)
         # Example of logging activity to the console (you can replace this with actual processing logic)
-        print("Received activity data:", activity_data)
+        print("Received activity data:", request.data)
 
         # Respond with a success message
         return JsonResponse({"message": "Activity tracked successfully"}, status=status.HTTP_200_OK)
