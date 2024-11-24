@@ -15,11 +15,11 @@ def csrf(request):
 
 @csrf_exempt
 def dashboard(request):
-
+    data = json.loads(request.body)
+    shop_id = data.get("shopId")
+    shop = ShopifyStore.objects.filter(id=shop_id).first()
     if hasattr(request, 'auth') and request.auth:
-        data = json.loads(request.body)
-        shop_id = data.get("shopId")
-        shop = ShopifyStore.objects.filter(id=shop_id).first()
+        
         headers = {
             'X-Shopify-Access-Token': shop.access_token
         }
@@ -37,7 +37,9 @@ def dashboard(request):
             print(f"Failed to fetch shop details. Status code: {response.status_code}")
             return JsonResponse({ "error": "No Shop Details" }, status=403)
     else:
-        # If 'auth' property is False or doesn't exist
+        if shop:
+            shop.urlsPassed = ''
+            shop.save()
         return JsonResponse({'error': 'Authentication failed'}, status=403)
     
 
