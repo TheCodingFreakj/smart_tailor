@@ -138,7 +138,14 @@ USE_TZ = True
 
 import os
 STATIC_URL = '/static/'
+
+# Path to the directory where static files will be stored (in development)
+STATICFILES_DIRS = [
+    BASE_DIR / "static",  # Example if your static directory is in the root of your project
+]
+
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field

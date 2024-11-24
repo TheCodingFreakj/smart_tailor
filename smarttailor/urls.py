@@ -21,4 +21,5 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('recommendations.urls')),
     path('', include('shopifyauthenticate.urls')),
+    path('', include('recommendations.urls')),
 ]
