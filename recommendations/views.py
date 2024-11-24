@@ -236,9 +236,9 @@ class TrackActivityView(APIView):
             shop = ShopifyStore.objects.filter(shop_name=shop_name).first()
 
             UserActivity.objects.create(
-                shop=shop,
+                product_url=activity_data["url"] if "url" in activity_data else None
                 user_id=customerId,
-                product_id=activity_data["product_id"],
+                product_id=activity_data["product_id"] if "product_id" in activity_data else None ,
                 action_type=activity_data["action"],
             )
 
@@ -247,8 +247,6 @@ class TrackActivityView(APIView):
             elif(activity_data.action == "show_related_product_based_on_category"):
                 self.fetch_shopify_product_category(activity_data["product_id"], shop)
             
-            # You can now process this data (store in DB, analyze, etc.)
-            # Example of logging activity to the console (you can replace this with actual processing logic)
             print("Received activity data:", request.data)
 
             # Respond with a success message
@@ -266,9 +264,3 @@ class TrackActivityView(APIView):
     def get_related_products_user(self,customer_id,shop):
         # feed to ML for deeper insights
         pass
-        # # Get products in the same category as the viewed product
-        # category = Product.objects.filter(id=product_id).values_list('category', flat=True).first()
-        # if category:
-        #     related_products = Product.objects.filter(category=category).exclude(id=product_id)[:5]
-        #     return related_products
-        # return []

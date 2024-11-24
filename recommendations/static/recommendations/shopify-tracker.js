@@ -21,7 +21,7 @@
   
   // Get the query parameters for the current script
   const queryParams = getScriptQueryParams("shopify-tracker.js");
-
+  console.log(queryParams)
   const shop = queryParams["shop"];
 
            // Track some activity, e.g., product view, cart addition, etc.
