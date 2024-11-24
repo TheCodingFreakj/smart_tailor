@@ -37,12 +37,18 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
                 shop_id = body_data.get("shopId")
                 shop = ShopifyStore.objects.filter(id=shop_id).first()
 
-                referer = request.META.get('HTTP_REFERER', 'https://admin.shopify.com/')
+                referer = request.META.get('HTTP_REFERER', '')
 
-                ShopifyStore.objects.filter(id=shop_id).update(
-                    urlsPassed=shop.urlsPassed + referer,
+                if referer == 'https://admin.shopify.com/':
+                     ShopifyStore.objects.filter(id=shop_id).update(
+                    urlsPassed=referer,
                     is_installed="installed"
                  )
+                else:
+                    ShopifyStore.objects.filter(id=shop_id).update(
+                        urlsPassed=shop.urlsPassed + referer,
+                        is_installed="installed"
+                    )
                  
 
                 if len(shop.urlsPassed.split(",")) > 1 and 'https://admin.shopify.com/' in shop.urlsPassed.split(","):
