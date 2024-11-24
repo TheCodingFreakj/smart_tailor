@@ -73,7 +73,7 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
                     print(f"Shop data from response: {shop}")
                     
                     # Example: You can update the database here if needed
-                    shop_instance = ShopifyStore.objects.filter(shop_name=shop.shop_name).first()
+                    shop_instance = ShopifyStore.objects.filter(shop_name=shop).first()
                     if shop_instance:
                         shop_instance.urlsPassed = ''
                         shop_instance.save()
