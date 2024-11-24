@@ -27,12 +27,10 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
                 shop_id = body_data.get("shopId")
                 shop = ShopifyStore.objects.filter(id=shop_id).first()
 
+                referer = request.META.get('HTTP_REFERER', '')
 
-                if request.META.get('HTTP_REFERER', '') in shop.urlsPassed.split(","):
-                    updated_urls = ','.join(url.strip() for url in shop.urlsPassed.split(',') if url.strip() != request.META.get('HTTP_REFERER', '')) + f', {request.META.get('HTTP_REFERER', '')}'
-                else:
-                    # Add the new path if '/shopify/callback' is not found
-                    updated_urls = shop.urlsPassed + "," + request.META.get('HTTP_REFERER', '')
+
+                updated_urls = ','.join(url.strip() for url in shop.urlsPassed.split(',') if url.strip() != referer) + (f',{referer}' if referer not in shop.urlsPassed else '')
 
                 ShopifyStore.objects.filter(shop_name=request.GET.get('shop')).update(
                     urlsPassed=updated_urls,
