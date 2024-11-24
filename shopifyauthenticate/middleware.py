@@ -19,7 +19,7 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
         print("refreer------------------------------------------------>", request.META.get('HTTP_REFERER', ''))
    
                 # Capture and parse the body if it exists
-        if request.method in ['POST', 'PUT', 'PATCH']:
+        if request.method in ['GET', 'POST', 'PUT', 'PATCH']:
             try:
                 # Decode and parse the request body as JSON
                 body_data = json.loads(request.body.decode('utf-8'))
@@ -29,17 +29,21 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
 
                 referer = request.META.get('HTTP_REFERER', '')
 
-
-                updated_urls = ','.join(url.strip() for url in shop.urlsPassed.split(',') if url.strip() != referer) + (f',{referer}' if referer not in shop.urlsPassed else '')
-
-                ShopifyStore.objects.filter(id=shop_id).update(
-                    urlsPassed=updated_urls,
+                if request.META.get('HTTP_REFERER', '') == 'https://admin.shopify.com/':
+                     ShopifyStore.objects.filter(id=shop_id).update(
+                    urlsPassed='https://admin.shopify.com/',
                     is_installed="installed"
-                )
+                 )
+                     
+                else:
 
+                    ShopifyStore.objects.filter(id=shop_id).update(
+                    urlsPassed=shop.urlsPassed + referer,
+                    is_installed="installed"
+                 )
                  
 
-                if len(shop.urlsPassed.split(",")) > 1 and shop.urlsPassed.split(",")[1] == 'https://admin.shopify.com/':
+                if len(shop.urlsPassed.split(",")) > 1 and 'https://admin.shopify.com/' in shop.urlsPassed.split(","):
                     request.auth = True
                 else:
                     request.auth = False       
