@@ -43,7 +43,7 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
                 shop_id = body_data.get("shopId")
                 shop = ShopifyStore.objects.filter(id=shop_id).first()
 
-                if 'https://admin.shopify.com/' not in shop.urlsPassed : 
+                if 'https://admin.shopify.com/' not in shop.urlsPassed.split(",") : 
                     request.auth = False
 
                 else:
