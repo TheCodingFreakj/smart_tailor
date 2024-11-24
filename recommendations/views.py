@@ -49,7 +49,7 @@ def dashboard(request):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class ProductRecommendationView(View):
-    TRACKING_SCRIPT_URL = "https://smart-tailor.onrender.com/static/shopify-tracker.js"
+    TRACKING_SCRIPT_URL = "https://smart-tailor.onrender.com/recommendations/static/shopify-tracker.js"
     
     def post(self, request):
         """

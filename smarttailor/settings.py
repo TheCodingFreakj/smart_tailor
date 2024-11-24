@@ -143,7 +143,7 @@ STATIC_URL = '/static/'
 
 # Path to the directory where static files will be stored (in development)
 STATICFILES_DIRS = [
-    BASE_DIR / "static",  # Example if your static directory is in the root of your project
+    os.path.join(BASE_DIR, 'recommendations', 'static'),  # Example if your static directory is in the root of your project
 ]
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
