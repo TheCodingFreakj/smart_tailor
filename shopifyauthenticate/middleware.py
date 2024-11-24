@@ -70,7 +70,10 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
                 body_data = json.loads(request.body.decode('utf-8'))
                 print(f"Request Body: {body_data}")
                 shop_id = body_data.get("shopId")
+                internal_call = body_data.get(internal_call)
                 shop = ShopifyStore.objects.filter(id=shop_id).first()
+                
+
 
 
                 if 'https://admin.shopify.com/' not in shop.urlsPassed.split(","): 
@@ -79,7 +82,13 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
                     else:    
                         request.auth = False
                 else:
-                    request.auth = True    
+                    request.auth = True 
+
+
+                if shop.urlsPassed == "" and  internal_call == True and shop.is_installed != "installed":
+                    request.auth = False
+                else:
+                    request.auth = True            
 
       
             except (json.JSONDecodeError, UnicodeDecodeError) as e:

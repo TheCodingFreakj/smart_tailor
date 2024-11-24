@@ -105,9 +105,8 @@ class ProductRecommendationView(View):
 
         try:
             # Shopify API session initialization
-            shop_url = f"{shop_id}.myshopify.com"
             api_version = '2024-07'  # Update this to the appropriate API version
-            session = shopify.Session(f"https://{shop_url}", api_version, shop.access_token)
+            session = shopify.Session(f"https://{shop.shop_name}", api_version, shop.access_token)
             shopify.ShopifyResource.activate_session(session)
 
             # Fetch all existing scripts
