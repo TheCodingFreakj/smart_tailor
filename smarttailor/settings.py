@@ -48,7 +48,8 @@ INSTALLED_APPS = [
     'recommendations', 
     'analytics',
     'shopifyauthenticate',
-    'corsheaders'
+    'corsheaders',
+    
 ]
 
 ALLOWED_HOSTS = ['smart-tailor.onrender.com', '127.0.0.1']
@@ -85,6 +86,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'smarttailor.wsgi.application'
+
 
 
 # Database

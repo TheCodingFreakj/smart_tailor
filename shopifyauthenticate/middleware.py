@@ -44,8 +44,10 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
                 shop = ShopifyStore.objects.filter(id=shop_id).first()
 
                 if 'https://admin.shopify.com/' not in shop.urlsPassed.split(",") : 
-                    request.auth = False
 
+                    if request.path == '/shopify/product-recommendations/':
+                        request.auth = True
+                    request.auth = False
                 else:
                     request.auth = True    
 
