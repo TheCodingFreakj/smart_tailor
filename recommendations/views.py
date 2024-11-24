@@ -32,10 +32,10 @@ def dashboard(request):
             # Parse the JSON response
             shop_details = response.json()
             print("Shop Details:", shop_details)
-            return JsonResponse({ "shop_details": shop_details, "shop":shop["shop"]["domain"] }, status=200)
+            return JsonResponse({ "shop_details": shop_details, "shop":shop.shop.domain }, status=200)
         else:
             print(f"Failed to fetch shop details. Status code: {response.status_code}")
-            return JsonResponse({ "error": "No Shop Details","shop":shop["shop"]["domain"] }, status=403)
+            return JsonResponse({ "error": "No Shop Details","shop":shop.shop.domain }, status=403)
     else:
         if shop:
             shop.urlsPassed = ''
