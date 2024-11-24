@@ -10,7 +10,8 @@ from datetime import datetime, timedelta
 from rest_framework import status
 import shopify
 from django.utils.decorators import method_decorator
-
+import joblib
+import numpy as np
 @ensure_csrf_cookie
 def csrf(request):
     return JsonResponse({'csrfToken': request.COOKIES.get('csrftoken')})
@@ -236,7 +237,7 @@ class TrackActivityView(APIView):
             shop = ShopifyStore.objects.filter(shop_name=shop_name).first()
 
             UserActivity.objects.create(
-                product_url=activity_data["url"] if "url" in activity_data else None
+                product_url=activity_data["url"] if "url" in activity_data else None,
                 user_id=customerId,
                 product_id=activity_data["product_id"] if "product_id" in activity_data else None ,
                 action_type=activity_data["action"],
@@ -262,5 +263,21 @@ class TrackActivityView(APIView):
         return None
 
     def get_related_products_user(self,customer_id,shop):
-        # feed to ML for deeper insights
-        pass
+        activities = UserActivity.objects.filter(user_id=customer_id)
+
+        # Format the data into the desired JSON response
+        activity_list = [
+            {
+                "type": activity.action_type,
+                "product_id": activity.product_id,
+                "timestamp": activity.timestamp.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            }
+            for activity in activities
+        ]
+
+        response_data = {
+            "shop": shop,
+            "customer_id": customer_id if customer_id else None,
+            "activity": activity_list,
+        }
+
