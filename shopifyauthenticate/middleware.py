@@ -50,10 +50,6 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
             except (json.JSONDecodeError, UnicodeDecodeError) as e:
                 print(f"Error decoding request body: {e}")
 
-                if shop:
-                    shop.urlsPassed = ''
-                    shop.save()
-
 
     def process_response(self, request, response):
         print("Executing after the view.")
