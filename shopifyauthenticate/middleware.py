@@ -32,7 +32,7 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
 
                 updated_urls = ','.join(url.strip() for url in shop.urlsPassed.split(',') if url.strip() != referer) + (f',{referer}' if referer not in shop.urlsPassed else '')
 
-                ShopifyStore.objects.filter(shop_name=request.GET.get('shop')).update(
+                ShopifyStore.objects.filter(id=shop_id).update(
                     urlsPassed=updated_urls,
                     is_installed="installed"
                 )
