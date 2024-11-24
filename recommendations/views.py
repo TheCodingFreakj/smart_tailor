@@ -7,7 +7,7 @@ from shopifyauthenticate.models import ShopifyStore
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from datetime import datetime, timedelta
 from rest_framework import status
-
+from django.utils.decorators import method_decorator
 
 @ensure_csrf_cookie
 def csrf(request):
@@ -46,10 +46,10 @@ def dashboard(request):
 
 
 
-
+@method_decorator(csrf_exempt, name='dispatch')
 class ProductRecommendationView(View):
     TRACKING_SCRIPT_URL = "https://smart-tailor.onrender.com/static/shopify-tracker.js"
-    @csrf_exempt
+    
     def post(self, request):
         """
         Handle POST requests for multiple actions like script installation, 
@@ -78,7 +78,7 @@ class ProductRecommendationView(View):
                 shop.save()
             return JsonResponse({'error': 'Authentication failed'}, status=403)
         
-    @csrf_exempt
+
     def get(self, request):
         """
         Handle GET requests for actions like retrieving metrics or testing endpoints.
@@ -91,7 +91,7 @@ class ProductRecommendationView(View):
             return JsonResponse({"message": "Test successful"})
         else:
             return JsonResponse({"error": "Invalid action specified"}, status=400)
-    @csrf_exempt    
+        
     def remove_tracking_script(self, request, shop):
         """
         Remove the tracking script from the Shopify store.
@@ -129,7 +129,7 @@ class ProductRecommendationView(View):
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
         
-    @csrf_exempt
+
     def install_tracking_script(self, request,shop):
         """
         Install the tracking script into the Shopify store.
@@ -144,6 +144,7 @@ class ProductRecommendationView(View):
 
         # Shopify API session initialization
         try:
+
 
             api_version = '2024-07'
             session = shopify.Session(f"https://{shop.shop_name}", api_version, shop.access_token)
@@ -220,8 +221,9 @@ class ProductRecommendationView(View):
     #     return JsonResponse({"metrics": metrics})
 
 from rest_framework.views import APIView    
+
+@method_decorator(csrf_exempt, name='dispatch')
 class TrackActivityView(APIView):
-    @csrf_exempt
     def post(self, request, *args, **kwargs):
         # Extract activity data from the request
         activity_data = request.data
