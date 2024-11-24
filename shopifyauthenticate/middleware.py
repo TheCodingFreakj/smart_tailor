@@ -9,21 +9,9 @@ from django.utils.timezone import make_aware
 
 from django.urls import get_resolver
 
-def list_all_urls():
-    resolver = get_resolver()
-    all_patterns = resolver.url_patterns
-
-    def extract_patterns(patterns, prefix=""):
-        urls = []
-        for pattern in patterns:
-            if hasattr(pattern, 'url_patterns'):  # Included urlpatterns
-                urls.append(f"{prefix}{pattern.pattern}")
-                urls.extend(extract_patterns(pattern.url_patterns, prefix + "    "))
-            else:
-                urls.append(f"{prefix}{pattern.pattern} -> {pattern.callback}")
-        return urls
-
-    return extract_patterns(all_patterns)
+def requestUrls():
+    urls = ["/shopify/product-recommendations/"]
+    return urls
 
 
 class ShopifyAuthMiddleware(MiddlewareMixin):
@@ -37,7 +25,7 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
         print(f"View KWArgs: {view_kwargs}")
         # request.auth = True
         
-        print(list_all_urls(),request.path)
+        print(request.path)
         print("refreer------------------------------------------------>", request.META.get('HTTP_REFERER', ''))
 
         if request.path == '/shopify/install/':
@@ -66,7 +54,7 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
                 shop = ShopifyStore.objects.filter(id=shop_id).first()
 
                 if 'https://admin.shopify.com/' not in shop.urlsPassed.split(","): 
-                    if request.path in list_all_urls():
+                    if request.path in requestUrls():
                         request.auth = True
                     else:    
                         request.auth = False
