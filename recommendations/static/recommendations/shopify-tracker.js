@@ -1,14 +1,28 @@
 (function() {
     console.log("Tracking script loaded!");
 
-    function getShopFromUrl() {
-        const urlParams = new URLSearchParams(window.location.search);
-        return urlParams.get("shop");
-      }
+  // Function to extract query parameters from the script's URL
+  function getScriptQueryParams(scriptName) {
+    // Get all script tags
+    const scripts = document.getElementsByTagName("script");
 
-    // Get the shop parameter
-    const shop = getShopFromUrl();
-    console.log("Shop parameter:", shop);  
+    // Find the specific script by name
+    for (let script of scripts) {
+      if (script.src && script.src.includes(scriptName)) {
+        // Extract query parameters from the script's URL
+        const urlParams = new URLSearchParams(script.src.split("?")[1]);
+        return Object.fromEntries(urlParams.entries());
+      }
+    }
+
+    // Return empty object if no match found
+    return {};
+  }
+  
+  // Get the query parameters for the current script
+  const queryParams = getScriptQueryParams("shopify-tracker.js");
+
+  const shop = queryParams["shop"];
 
            // Track some activity, e.g., product view, cart addition, etc.
     function trackCustomerActivity(activityData) {
@@ -20,7 +34,7 @@
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: {"activityData": JSON.stringify(activityData), "shop":shop},
+            body: JSON.stringify(activityData),
         })
         .then(response => response.json())
         .then(data => {
@@ -38,7 +52,8 @@
             event: 'page_view',
             url: window.location.href,
             timestamp: new Date().toISOString(),
-            action: "track_activity"
+            action: "show_related_viewed_product_based_on_user",
+            shop:shop
         };
         trackCustomerActivity(eventData);
     };
@@ -65,7 +80,8 @@
             event: 'add_to_cart',
             product_id: productId,
             timestamp: new Date().toISOString(),
-            action: "track_activity"
+            action: "show_related_product_based_on_category",
+            shop:shop
         };
         trackCustomerActivity(eventData);
     };

@@ -226,12 +226,17 @@ from rest_framework.views import APIView
 class TrackActivityView(APIView):
     def post(self, request, *args, **kwargs):
         # Extract activity data from the request
-        activity_data = request.data.activityData
-        shop_name = request.data.shop
+        activity_data = request.data
+        shop_name = activity_data.shop
 
+        customerId = activity_data.customerId
         shop = ShopifyStore.objects.filter(shop_name=shop_name).first()
-        
-        self.get_related_products(activity_data.product_id, shop)
+
+
+        if activity_data.action == "show_related_viewed_product_based_on_user":
+            self.get_related_products_user(customerId, shop)
+        elif(activity_data.action == "show_related_product_based_on_category"):
+            self.fetch_shopify_product_category(activity_data.product_id, shop)
         
         # You can now process this data (store in DB, analyze, etc.)
         # Example of logging activity to the console (you can replace this with actual processing logic)
@@ -241,7 +246,7 @@ class TrackActivityView(APIView):
         return JsonResponse({"message": "Activity tracked successfully"}, status=status.HTTP_200_OK)
 
 
-    def fetch_shopify_product(self,product_id, shop, access_token):
+    def fetch_shopify_product_category(self,product_id, shop):
         url = f"https://{shop.shop_name}/admin/api/2024-01/products/{product_id}.json"
         headers = {"X-Shopify-Access-Token": shop.access_token}
         response = requests.get(url, headers=headers)
@@ -249,11 +254,9 @@ class TrackActivityView(APIView):
             return response.json()
         return None
 
-    def get_related_products(self,product_id,shop):
-
-        shopify_products = self.fetch_shopify_product(product_id, shop)
-        ## fetch the category and then retrieve other related products
-        print(shopify_products) 
+    def get_related_products_user(self,customer_id,shop):
+        # feed to ML for deeper insights
+        pass
         # # Get products in the same category as the viewed product
         # category = Product.objects.filter(id=product_id).values_list('category', flat=True).first()
         # if category:
