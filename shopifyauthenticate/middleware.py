@@ -8,6 +8,25 @@ from django.utils.timezone import make_aware
 
 
 from django.urls import get_resolver
+from django.http import JsonResponse
+
+def list_all_urls():
+    resolver = get_resolver()
+
+    def extract_patterns(patterns, prefix=""):
+        urls = []
+        for pattern in patterns:
+            if hasattr(pattern, 'url_patterns'):  # If it's an included urlpatterns
+                urls.append(f"{prefix}{pattern.pattern}")
+                urls.extend(extract_patterns(pattern.url_patterns, prefix + "    "))
+            else:
+                urls.append(f"{prefix}{pattern.pattern} -> {pattern.callback}")
+        return urls
+
+    # Get all URLs
+    urls = extract_patterns(resolver.url_patterns)
+
+    return urls
 
 def requestUrls():
     urls = ["/shopify/product-recommendations/"]
@@ -25,7 +44,7 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
         print(f"View KWArgs: {view_kwargs}")
         # request.auth = True
         
-        print(request.path)
+        print(list_all_urls(), request.path)
         print("refreer------------------------------------------------>", request.META.get('HTTP_REFERER', ''))
 
         if request.path == '/shopify/install/':

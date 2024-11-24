@@ -7,6 +7,7 @@ from shopifyauthenticate.models import ShopifyStore
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from datetime import datetime, timedelta
 from rest_framework import status
+import shopify
 from django.utils.decorators import method_decorator
 
 @ensure_csrf_cookie
