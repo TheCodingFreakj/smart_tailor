@@ -1,9 +1,9 @@
 (function() {
     console.log("Tracking script loaded!");
 
-    // Example: Track page views
-    document.addEventListener("DOMContentLoaded", function() {
-        console.log("Page loaded: ", window.location.href);
+    // // Example: Track page views
+    // document.addEventListener("DOMContentLoaded", function() {
+    //     console.log("Page loaded: ", window.location.href);
 
            // Track some activity, e.g., product view, cart addition, etc.
     function trackCustomerActivity(activityData) {
@@ -71,5 +71,5 @@
     });
 
     trackPageView();
-    });
+    // });
 })();

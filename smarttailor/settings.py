@@ -52,7 +52,7 @@ INSTALLED_APPS = [
     
 ]
 
-ALLOWED_HOSTS = ['smart-tailor.onrender.com', '127.0.0.1']
+ALLOWED_HOSTS = ['smart-tailor.onrender.com', '127.0.0.1','localhost']
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
