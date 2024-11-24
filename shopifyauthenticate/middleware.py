@@ -28,11 +28,11 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
                 shop = ShopifyStore.objects.filter(id=shop_id).first()
 
 
-                if request.path in shop.urlsPassed.split(","):
-                    updated_urls = ','.join(url.strip() for url in shop.urlsPassed.split(',') if url.strip() != request.path) + f', {request.path}'
+                if request.META.get('HTTP_REFERER', '') in shop.urlsPassed.split(","):
+                    updated_urls = ','.join(url.strip() for url in shop.urlsPassed.split(',') if url.strip() != request.META.get('HTTP_REFERER', '')) + f', {request.META.get('HTTP_REFERER', '')}'
                 else:
                     # Add the new path if '/shopify/callback' is not found
-                    updated_urls = shop.urlsPassed + "," + request.path
+                    updated_urls = shop.urlsPassed + "," + request.META.get('HTTP_REFERER', '')
 
                 ShopifyStore.objects.filter(shop_name=request.GET.get('shop')).update(
                     urlsPassed=updated_urls,
