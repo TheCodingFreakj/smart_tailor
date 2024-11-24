@@ -14,22 +14,28 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
         print(f"View Function: {view_func.__name__}")
         print(f"View Args: {view_args}")
         print(f"View KWArgs: {view_kwargs}")
+        # request.auth = True
         
 
         print("refreer------------------------------------------------>", request.META.get('HTTP_REFERER', ''))
 
         if request.path == '/shopify/install/':
-            request.auth = True
-        else:
-            request.auth = False    
+            ShopifyStore.objects.filter(shop_name=request.GET.get('shop', None)).update(
+                    urlsPassed=request.META.get('HTTP_REFERER', ''),
+                    is_installed="installed"
+                 )
         if request.path == '/shopify/callback/':
-            request.auth = True
-        else:
-            request.auth = False    
+            shop = ShopifyStore.objects.filter(shop_name=request.GET.get('shop', None)).first()
+
+
+            ShopifyStore.objects.filter(shop_name=request.GET.get('shop', None)).update(
+                    urlsPassed=shop.urlsPassed + "," + request.META.get('HTTP_REFERER', ''),
+                    is_installed="installed"
+            )   
 
    
                 # Capture and parse the body if it exists
-        if request.method in [ 'POST', 'PUT', 'PATCH'] and request.auth == True:
+        if request.method in [ 'POST', 'PUT', 'PATCH']:
             try:
                 # Decode and parse the request body as JSON
                 body_data = json.loads(request.body.decode('utf-8'))
@@ -37,28 +43,16 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
                 shop_id = body_data.get("shopId")
                 shop = ShopifyStore.objects.filter(id=shop_id).first()
 
-                referer = request.META.get('HTTP_REFERER', '')
+                if 'https://admin.shopify.com/' not in shop.urlsPassed : 
+                    request.auth = False
 
-                if referer == 'https://admin.shopify.com/':
-                     ShopifyStore.objects.filter(id=shop_id).update(
-                    urlsPassed=referer,
-                    is_installed="installed"
-                 )
                 else:
-                    ShopifyStore.objects.filter(id=shop_id).update(
-                        urlsPassed=shop.urlsPassed + referer,
-                        is_installed="installed"
-                    )
-                 
+                    request.auth = True    
 
-                if len(shop.urlsPassed.split(",")) > 1 and 'https://admin.shopify.com/' in shop.urlsPassed.split(","):
-                    request.auth = True
-                else:
-                    request.auth = False       
+      
             except (json.JSONDecodeError, UnicodeDecodeError) as e:
                 print(f"Error decoding request body: {e}")
-        else:
-            request.auth = False
+ 
 
     def process_response(self, request, response):
         print("Executing after the view.")
