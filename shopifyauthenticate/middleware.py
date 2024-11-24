@@ -72,13 +72,16 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
                 shop_id = body_data.get("shopId")
                 shop = ShopifyStore.objects.filter(id=shop_id).first()
 
-                if 'https://admin.shopify.com/' not in shop.urlsPassed.split(","): 
-                    if request.path in requestUrls():
-                        request.auth = True
-                    else:    
-                        request.auth = False
+                if shop.urlsPassed == '':
+                    request.auth = False
                 else:
-                    request.auth = True    
+                    if 'https://admin.shopify.com/' not in shop.urlsPassed.split(","): 
+                        if request.path in requestUrls():
+                            request.auth = True
+                        else:    
+                            request.auth = False
+                    else:
+                        request.auth = True    
 
       
             except (json.JSONDecodeError, UnicodeDecodeError) as e:
