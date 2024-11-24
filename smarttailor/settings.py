@@ -141,11 +141,9 @@ USE_TZ = True
 import os
 STATIC_URL = '/static/'
 
-# # Path to the directory where static files will be stored (in development)
-# STATICFILES_DIRS = [
-#     os.path.join(BASE_DIR, 'recommendations', 'static'),  # Example if your static directory is in the root of your project
-# ]
-
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'recommendations', 'static'),
+]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 
