@@ -61,7 +61,8 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
                     urlsPassed=shop.urlsPassed + "," + request.META.get('HTTP_REFERER', ''),
                     is_installed="installed"
             )   
-         
+        if request.path == '/track-activity/':
+                    request.auth = True
    
                 # Capture and parse the body if it exists
         if request.method in [ 'POST', 'PUT', 'PATCH']:
@@ -72,23 +73,27 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
                 shop_id = body_data.get("shopId")
                 internal_call = body_data.get("internal_call")
                 shop = ShopifyStore.objects.filter(id=shop_id).first()
+
+
+                if request.path == '/track-activity/':
+                    request.auth = True
                 
 
+                if shop is not None:
+
+                    if 'https://admin.shopify.com/' not in shop.urlsPassed.split(","): 
+                        if request.path in requestUrls():
+                            request.auth = True
+                        else:    
+                            request.auth = False
+                    else:
+                        request.auth = True 
 
 
-                if 'https://admin.shopify.com/' not in shop.urlsPassed.split(","): 
-                    if request.path in requestUrls():
-                        request.auth = True
-                    else:    
+                    if shop.urlsPassed == "" and  internal_call == True and shop.is_installed != "installed":
                         request.auth = False
-                else:
-                    request.auth = True 
-
-
-                if shop.urlsPassed == "" and  internal_call == True and shop.is_installed != "installed":
-                    request.auth = False
-                else:
-                    request.auth = True            
+                    else:
+                        request.auth = True            
 
       
             except (json.JSONDecodeError, UnicodeDecodeError) as e:
