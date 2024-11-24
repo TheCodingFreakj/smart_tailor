@@ -37,17 +37,9 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
                 shop_id = body_data.get("shopId")
                 shop = ShopifyStore.objects.filter(id=shop_id).first()
 
-                referer = request.META.get('HTTP_REFERER', '')
+                referer = request.META.get('HTTP_REFERER', 'https://admin.shopify.com/')
 
-                if request.META.get('HTTP_REFERER', '') == 'https://admin.shopify.com/':
-                     ShopifyStore.objects.filter(id=shop_id).update(
-                    urlsPassed='https://admin.shopify.com/',
-                    is_installed="installed"
-                 )
-                     
-                else:
-
-                    ShopifyStore.objects.filter(id=shop_id).update(
+                ShopifyStore.objects.filter(id=shop_id).update(
                     urlsPassed=shop.urlsPassed + referer,
                     is_installed="installed"
                  )
@@ -71,13 +63,6 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
             if isinstance(response, JsonResponse):
                 # Extract the JSON data from the response
                 response_data = json.loads(response.content)  # This will give you the dictionary
-
-                # # Check if 'error' key exists in the response_data dictionary
-                # if 'error' in response_data:
-                #     shop_errored = response_data.get('shop')
-                #     print(f"Error found: {shop_errored}")
-                #     shop_errored.urlsPassed = ''
-                #     shop_errored.save()
                 
                 # Check if 'shop' attribute exists in the response
                 shop = response_data.get('shop')
