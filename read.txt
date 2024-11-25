@@ -233,3 +233,5 @@ Use activity data to make improvements to your Shopify store:
 Improve product pages: Identify poorly performing product pages and optimize their descriptions, images, or pricing.
 Optimize categories: Rearrange categories or navigation based on user activity trends.
 Test different strategies: A/B test features like button placement, product recommendations, and layouts to maximize conversions.
+Optional: Retraining the Model
+If you want to periodically retrain the model based on new data, you can set up a Django management command or a background task (using Celery, for example) to retrain the model at regular intervals.

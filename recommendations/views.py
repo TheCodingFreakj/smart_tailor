@@ -2,6 +2,7 @@ import json
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.views import View
+import pandas as pd
 import requests
 from .models import UserActivity
 from shopifyauthenticate.models import ShopifyStore
@@ -12,6 +13,7 @@ import shopify
 from django.utils.decorators import method_decorator
 import joblib
 import numpy as np
+from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 @ensure_csrf_cookie
 def csrf(request):
     return JsonResponse({'csrfToken': request.COOKIES.get('csrftoken')})
@@ -244,7 +246,7 @@ class TrackActivityView(APIView):
             )
 
             if activity_data.action == "show_related_viewed_product_based_on_user":
-                self.get_related_products_user(customerId, shop)
+                self.get_related_products_user(activity_data, shop)
             elif(activity_data.action == "show_related_product_based_on_category"):
                 self.fetch_shopify_product_category(activity_data["product_id"], shop)
             
@@ -262,22 +264,64 @@ class TrackActivityView(APIView):
             return response.json()
         return None
 
-    def get_related_products_user(self,customer_id,shop):
-        activities = UserActivity.objects.filter(user_id=customer_id)
 
-        # Format the data into the desired JSON response
-        activity_list = [
-            {
-                "type": activity.action_type,
-                "product_id": activity.product_id,
-                "timestamp": activity.timestamp.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            }
-            for activity in activities
-        ]
 
-        response_data = {
-            "shop": shop,
-            "customer_id": customer_id if customer_id else None,
-            "activity": activity_list,
-        }
 
+    def preprocess_data(self,data):
+        from sklearn.preprocessing import LabelEncoder
+        # Convert 'timestamp' to datetime
+        data['timestamp'] = pd.to_datetime(data['timestamp'])
+        
+        # Extract time-based features
+        data['hour_of_day'] = data['timestamp'].dt.hour
+        data['day_of_week'] = data['timestamp'].dt.dayofweek
+
+        # Encode 'user_id' and 'action_type' as categorical features
+        user_encoder = LabelEncoder()
+        data['user_id_encoded'] = user_encoder.fit_transform(data['user_id'])
+        
+        action_encoder = LabelEncoder()
+        data['action_type_encoded'] = action_encoder.fit_transform(data['action_type'])
+
+        # Create features like count of actions by user and product
+        user_product_activity = data.groupby(['user_id', 'product_id']).agg({
+            'action_type_encoded': ['sum', 'count'],
+            'hour_of_day': 'mean',
+            'day_of_week': 'mean'
+        }).reset_index()
+
+        # Flatten MultiIndex columns
+        user_product_activity.columns = ['user_id', 'product_id','product_url', 'action_sum', 'action_count', 'avg_hour_of_day', 'avg_day_of_week']
+        
+        return user_product_activity
+
+   
+    # Step 6: Use the Trained Model for Prediction
+    def predict_new_data(self,model, new_data):
+        # Preprocess new data
+        new_data_processed = self.preprocess_data(new_data)
+
+        # Make predictions on the new data
+        X_new = new_data_processed[['action_sum', 'action_count', 'avg_hour_of_day', 'avg_day_of_week']]
+        predictions = model.predict(X_new)
+        
+        return predictions
+    def get_related_products_user(self,activity_data,shop):
+        # Fetch the data from the database
+        data = { }
+
+        data["product_url"]=activity_data["url"] if "url" in activity_data else None,
+        data["user_id"]=activity_data["customerId"],
+        data["product_id"]=activity_data["product_id"] if "product_id" in activity_data else None ,
+        data["action_type"]=activity_data["action"],
+        data["timestamp"]=""
+
+
+
+        # Load the trained model
+        model = self.load_model()
+
+        # Get predictions based on the user's activity
+        predictions = self.predict_new_data(model, data)
+
+        return JsonResponse({"recommendations": predictions.tolist()})
