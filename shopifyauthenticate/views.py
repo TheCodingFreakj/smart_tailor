@@ -82,7 +82,8 @@ class ShopifyInstallView(View):
         # Proceed with redirection
         api_key = settings.SHOPIFY_API_KEY
         redirect_uri = f"{settings.SHOPIFY_APP_URL}/shopify/callback/"
-        scopes = "read_products,write_products,read_orders,write_orders,read_script_tags,write_script_tags"
+        # write_themes_assets
+        scopes = "read_products,write_products,read_orders,write_orders,read_script_tags,write_script_tags,read_customers,write_customers,read_themes,write_themes,read_customers,write_customers"
         # Create a session token (it could be a random UUID or something more specific)
         session_token = str(uuid.uuid4())
         request.session['shopify_oauth_session_token'] = session_token
@@ -192,7 +193,9 @@ class ShopifyCallbackView(View):
         }
         response = requests.post(token_url, data=payload)
 
-        print(response)
+
+
+        print(response.json())
 
         if response.status_code == 200:
             access_token = response.json().get("access_token")
@@ -205,23 +208,25 @@ class ShopifyCallbackView(View):
             success, message = register_uninstall_webhook(shop, access_token, webhook_url)
             if not success:
                 print(f"Failed to register uninstall webhook: {message}")
-
+            print(f"Hitting here--->{code}")
             shopRecord = ShopifyStore.objects.filter(shop_name=shop).first()  
             shopRecord.is_installed == "installed"  
 
             # Redirect to React app
-            react_home_url = f"https://smart-tailor-frnt.onrender.com/dashboard/{shop}/{shopRecord.id}"
+            react_home_url = f"{settings.SHOPIFY_APP_URL_FRNT}/dashboard/{shop}/{shopRecord.id}"
 
 
             # Validate session token (ensures this was a valid redirect flow)
             if not code:
-                return redirect("https://smart-tailor-frnt.onrender.com/error")
+                print("Hitting here")
+                return redirect(f"{settings.SHOPIFY_APP_URL_FRNT}/error")
             else:
+                print(f"Hitting here---{react_home_url}")
                 return redirect(react_home_url)
 
 
         # Redirect to an error page if token exchange fails
-        return redirect("https://smart-tailor-frnt.onrender.com/error")
+        return redirect(f"{settings.SHOPIFY_APP_URL_FRNT}/error")
 
 
 from django.views.decorators.csrf import csrf_exempt

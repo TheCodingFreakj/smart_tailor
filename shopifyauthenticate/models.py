@@ -11,6 +11,7 @@ class ShopifyStore(models.Model):
     current_hmac = models.CharField(max_length=255, unique=True, default="")
     calculated_hmac=models.CharField(max_length=255, unique=True, default="")
     urlsPassed = models.CharField(max_length=255, unique=True, default="")
+    shop_id_from_shopify= models.CharField(max_length=255, default="")
     
 
     def __str__(self):

@@ -1,5 +1,6 @@
 (function() {
     console.log("Tracking script loaded!");
+    console.log('Logged In Customer:', window.loggedInCustomer);
 
   // Function to extract query parameters from the script's URL
   function getScriptQueryParams(scriptName) {
@@ -27,7 +28,7 @@
            // Track some activity, e.g., product view, cart addition, etc.
     function trackCustomerActivity(activityData) {
         // Your backend endpoint where you want to send the data
-        const backendUrl = 'https://smart-tailor.onrender.com/track-activity/'; // Adjust the URL as needed
+        const backendUrl = 'https://9e7d-2409-4062-2295-bc4f-7cc3-f3e3-ce63-949b.ngrok-free.app/track-activity/'; // Adjust the URL as needed
 
         fetch(backendUrl, {
             method: 'POST',
@@ -48,7 +49,7 @@
      // Example: Track page view
      const trackPageView = () => {
         const eventData = {
-            customerId: window.customerInfo?.id || null,
+            customerId: window.loggedInCustomer.id || null,
             event: 'page_view',
             url: window.location.href,
             timestamp: new Date().toISOString(),
@@ -76,9 +77,10 @@
 
     const trackAddToCart = (productId) => {
         const eventData = {
-            customerId: window.customerInfo?.id || null,
+            customerId: window.loggedInCustomer.id || null,
             event: 'add_to_cart',
             product_id: productId,
+            url: window.location.href,
             timestamp: new Date().toISOString(),
             action: "show_related_product_based_on_category",
             shop:shop
@@ -96,5 +98,5 @@
     });
 
     trackPageView();
-    // });
+   
 })();

@@ -44,7 +44,7 @@ class ShopifyAuthMiddleware(MiddlewareMixin):
         print(f"View KWArgs: {view_kwargs}")
         # request.auth = True
         
-        print(list_all_urls(), request.path)
+       
         print("refreer------------------------------------------------>", request.META.get('HTTP_REFERER', ''))
 
         if request.path == '/shopify/install/':
