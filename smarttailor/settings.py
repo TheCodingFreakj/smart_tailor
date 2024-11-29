@@ -33,7 +33,7 @@ ALLOWED_HOSTS = [
 
 CSRF_TRUSTED_ORIGINS = [
     "https://smart-tailor-frnt.onrender.com",
-    'https://950d-2409-4062-2295-bc4f-7cc3-f3e3-ce63-949b.ngrok-free.app'
+    'https://f09a-2409-4062-4d8b-b24-8d86-a79f-873b-26e8.ngrok-free.app'
 ]
 
 
@@ -54,7 +54,7 @@ INSTALLED_APPS = [
 ]
 
 
-ALLOWED_HOSTS = ['smart-tailor.onrender.com', '127.0.0.1','localhost', '9e7d-2409-4062-2295-bc4f-7cc3-f3e3-ce63-949b.ngrok-free.app']
+ALLOWED_HOSTS = ['smart-tailor.onrender.com', '127.0.0.1','localhost', 'b6da-2409-4062-4d8b-b24-8d86-a79f-873b-26e8.ngrok-free.app']
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -157,7 +157,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOWED_ORIGINS = [
     "https://smart-tailor-frnt.onrender.com",
     "http://localhost:3000",  # For local development
-    'https://950d-2409-4062-2295-bc4f-7cc3-f3e3-ce63-949b.ngrok-free.app'
+    'https://f09a-2409-4062-4d8b-b24-8d86-a79f-873b-26e8.ngrok-free.app'
 ]
 
 
@@ -184,5 +184,5 @@ SHOPIFY_API_SECRET="79cdf05416a53e310f67a81e6e0ee6d1"
 USE_X_FORWARDED_HOST = True
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # SHOPIFY_APP_URL="https://smart-tailor.onrender.com"
-SHOPIFY_APP_URL="https://9e7d-2409-4062-2295-bc4f-7cc3-f3e3-ce63-949b.ngrok-free.app"
-SHOPIFY_APP_URL_FRNT='https://950d-2409-4062-2295-bc4f-7cc3-f3e3-ce63-949b.ngrok-free.app'
+SHOPIFY_APP_URL="https://b6da-2409-4062-4d8b-b24-8d86-a79f-873b-26e8.ngrok-free.app"
+SHOPIFY_APP_URL_FRNT='https://f09a-2409-4062-4d8b-b24-8d86-a79f-873b-26e8.ngrok-free.app'
