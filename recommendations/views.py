@@ -1,13 +1,20 @@
 import json
+import logging
+import os
+import random
+import re
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.views import View
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.decomposition import TruncatedSVD
+import pytz
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
 import requests
-from .models import ProductRelationship, UserActivity
+from tabulate import tabulate
+from .models import ProductRecommendation, ProductRelationship, UserActivity,SliderSettings
 from shopifyauthenticate.models import ShopifyStore
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from datetime import datetime, timedelta
@@ -17,8 +24,27 @@ from django.utils.decorators import method_decorator
 from smarttailor import settings
 from sklearn.metrics.pairwise import cosine_similarity
 import certifi
+from .serializers.recommendations import SliderSettingsSerializer
 
+# Create logs directory if it doesn't exist
+log_dir = "logs"
+os.makedirs(log_dir, exist_ok=True)
 
+# Define log file path
+log_file = os.path.join(log_dir, "app.log")
+
+# Configure the logger
+logging.basicConfig(
+    level=logging.DEBUG,  # Set the minimum log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",  # Log message format
+    handlers=[
+        logging.FileHandler(log_file),  # Write logs to a file
+        logging.StreamHandler()        # Output logs to the console
+    ]
+)
+
+# Create a logger instance
+logger = logging.getLogger("AppLogger")
 
 @ensure_csrf_cookie
 def csrf(request):
@@ -62,7 +88,7 @@ def dashboard(request):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class ProductRecommendationView(View):
-    #TRACKING_SCRIPT_URL = "https://c9e3-2409-4062-4d09-af42-306a-f08-54b-74c1.ngrok-free.app/static/recommendations/shopify-tracker.js"
+    #TRACKING_SCRIPT_URL = "https://b6da-2409-4062-4d8b-b24-8d86-a79f-873b-26e8.ngrok-free.app/static/recommendations/shopify-tracker.js"
     TRACKING_SCRIPT_URL = f"{settings.SHOPIFY_APP_URL}/static/recommendations/shopify-tracker.js"
     def post(self, request):
         """
@@ -182,7 +208,7 @@ class ProductRecommendationView(View):
             return JsonResponse({"error": str(e)}, status=500)
 
 
-from rest_framework.views import APIView 
+
 
 
 # @method_decorator(csrf_exempt, name='dispatch')
@@ -208,6 +234,7 @@ class TrackActivityView(APIView):
         if activity_data:
             shop_name = activity_data["shop"]
             customerId = activity_data["customerId"] or 1
+
             shop = ShopifyStore.objects.filter(shop_name=shop_name).first()
             api_version = '2024-10'
             self.install_customer_tracking_script(shop.shop_name, shop.access_token)
@@ -409,364 +436,416 @@ class TrackActivityView(APIView):
         # Calculate the date for one week ago
         
     def get_related_products_user(self,activity_data,shop,version):
-        
-    
-        # customer_id = activity_data["customerId"]
-        # query = f"""
-        # {{
-        # orders(first: 10, query: "{f'customer_id:{customer_id}'}") {{
-        #     edges {{
-        #     node {{
-        #         id
-        #         updatedAt
-        #         customer{{
-        #         id
-        #         }}
-        #         customerJourney{{
-        #             customerOrderIndex
-        #             daysToConversion
-        #             firstVisit{{
-        #             source
-        #             }}
-        #             moments{{
-        #             occurredAt
-        #             }}
-        #             lastVisit{{
-        #             source
-        #             }}
-        #         }}
-                
-        #         lineItems(first:5){{
-        #           edges{{
-        #           node{{
-        #           name
-        #           quantity
-        #           product{{
-        #           category{{
-        #           name
-        #           }}
-        #           title
-        #           variants(first: 5){{
-        #           nodes{{
-        #           displayName
-        #           price
-                  
-        #           }}
-        #           }}
-        #           }}
-        #           }}
-        #           }}
-        #         }}
-        #     }}
-        #     }}
-        # }}
-        # }}
-        # """
 
-        # # Prepare the headers
-        # headers = {
-        #     "Content-Type": "application/json",
-        #     "X-Shopify-Access-Token": shop.access_token
-        # }
 
-        # # Prepare the payload
-        # payload = {
-        #     "query": query,
+        # get all enabled account customers
+        query = """ {
+        customers(first: 10) {
+    edges {
+      node {
+        id
+        state
+      }
+    }
+  }
+        }
+
+# """
+
+
+        headers = {
+            "Content-Type": "application/json",
+            "X-Shopify-Access-Token": shop.access_token
+        }
+
+                # # Prepare the payload
+        payload = {
+            "query": query,
            
-        # }
+        }
 
-        # # Make the POST request to the Shopify API
-        # response = requests.post(f"https://{shop.shop_name}/admin/api/{version}/graphql.json", headers=headers, data=json.dumps(payload),verify=certifi.where())
-        # print(response.json())
+        # Make the POST request to the Shopify API
+        response = requests.post(f"https://{shop.shop_name}/admin/api/{version}/graphql.json", headers=headers, data=json.dumps(payload),verify=certifi.where())
+       
 
-        # # Check if the request was successful
-        # if response.status_code == 200:
-        #     data = response.json()  # Parse the response JSON
-        #     print(json.dumps(data, indent=2))  # Pretty print the response
-        # else:
-        #     print(f"Error: {response.status_code}, {response.text}")
+
+        customer_all = response.json()
+        
+        # Extract the customers array
+        customers = [edge['node'] for edge in customer_all['data']['customers']['edges']]
+        # Extract only the numeric part of the IDs
+        numeric_ids = [re.search(r'\d+', customer['id']).group() for customer in customers]
+
+        all_customer_interactions = []
+
+        for idx in numeric_ids:
+            query = f"""
+            {{
+            orders(first: 10, query: "{f'customer_id:{idx}'}") {{
+                edges {{
+                node {{
+                    id
+                    updatedAt
+                    customer{{
+                    id
+                    }}
+                    customerJourney{{
+                        customerOrderIndex
+                        daysToConversion
+                        firstVisit{{
+                        source
+                        }}
+                        moments{{
+                        occurredAt
+                        }}
+                        lastVisit{{
+                        source
+                        }}
+                    }}
+                    
+                    lineItems(first:5){{
+                    edges{{
+                    node{{
+                    name
+                    quantity
+                    product{{
+                    id
+                    category{{
+                    name
+                    }}
+                    title
+                    variants(first: 5){{
+                    nodes{{
+                    displayName
+                    price
+                    
+                    }}
+                    }}
+                    }}
+                    }}
+                    }}
+                    }}
+                }}
+                }}
+            }}
+            }}
+            """
+
+            # Prepare the headers
+            headers = {
+                "Content-Type": "application/json",
+                "X-Shopify-Access-Token": shop.access_token
+            }
+
+            # Prepare the payload
+            payload = {
+                "query": query,
+            
+            }
+
+            # Make the POST request to the Shopify API
+            response = requests.post(f"https://{shop.shop_name}/admin/api/{version}/graphql.json", headers=headers, data=json.dumps(payload),verify=certifi.where())
+            all_customer_interactions.append(response.json())
+            logger.error(f"all_customer_interactions---->{all_customer_interactions}")
+        
 
 
 
         # Define the GraphQL query
-        # query = """
-        
-        # products(first: 10, reverse: true) {
-        #     edges {
-        #     node {
-        #         title
-        #     }
-        #     }
-        # }
-        
-        # """
-
-        # # Define the headers (if any authorization token is needed, for example)
-        # headers = {
-        #     'Content-Type': 'application/json',
-        #     "X-Shopify-Access-Token": shop.access_token  # Replace with your actual token
-        # }
-
-        # # Make the POST request to the GraphQL endpoint
-        # response = requests.post(f"https://{shop.shop_name}/admin/api/{version}/graphql.json", json={'query': query}, headers=headers)
-        # all_products = None
-        # # Check the status code and print the response
-        # if response.status_code == 200:
-        #     data = response.json()  # Parse the response JSON data
-        #     # Pretty print the data (if needed)
-        #     import json
-        #     print(json.dumps(data, indent=2))  # Print the JSON response in a readable format
-        # else:
-        #     print(f"Failed to fetch data: {response.status_code}")
-
-        response_data = {
-  "data": {
-    "products": {
-      "edges": [
-        {
-          "node": {
-            "title": "ssss"
-          }
-        },
-        {
-          "node": {
-            "title": "drgdgdfgrdrf"
-          }
-        },
-        {
-          "node": {
-            "title": "dvdgvdf"
-          }
-        },
-        {
-          "node": {
-            "title": "fsfsfcsd"
-          }
-        },
-        {
-          "node": {
-            "title": "ew"
-          }
-        },
-        {
-          "node": {
-            "title": "p1"
-          }
-        }
-      ]
-    }
-  },
-  "extensions": {
-    "cost": {
-      "requestedQueryCost": 6,
-      "actualQueryCost": 5,
-      "throttleStatus": {
-        "maximumAvailable": 2000.0,
-        "currentlyAvailable": 1995,
-        "restoreRate": 100.0
+        query = """
+        query {
+  products(first: 10, reverse: true) {
+    edges {
+      node {
+        id
+        title
       }
     }
   }
-}
+  }
+        """
+
+        # Define the headers (if any authorization token is needed, for example)
+        headers = {
+            'Content-Type': 'application/json',
+            "X-Shopify-Access-Token": shop.access_token  # Replace with your actual token
+        }
+
+        # Make the POST request to the GraphQL endpoint
+        response = requests.post(f"https://{shop.shop_name}/admin/api/{version}/graphql.json", json={'query': query}, headers=headers)
+        # Check the status code and print the response
+        if response.status_code == 200:
+            data = response.json()  # Parse the response JSON data
+            # Pretty print the data (if needed)
+
+            # print(json.dumps(data, indent=2))  # Print the JSON response in a readable format
+        else:
+            print(f"Failed to fetch data: {response.status_code}")
+
+        response_data = response.json()
+
+        
         # Extracting product titles
         all_products_in_store = [product['node']['title'] for product in response_data['data']['products']['edges']]
 
         # Print the result
-        print(all_products_in_store)
-        data = {'data': {'orders': {'edges': [{'node': {'id': 'gid://shopify/Order/5892709744895', 'updatedAt': '2024-11-29T16:28:59Z', 'customer': {'id': 'gid://shopify/Customer/7664803578111'}, 'customerJourney': {'customerOrderIndex': 0, 'daysToConversion': 1, 'firstVisit': {'source': 'direct'}, 'moments': [{'occurredAt': '2024-11-28T16:51:42Z'}, {'occurredAt': '2024-11-29T16:08:15Z'}, {'occurredAt': '2024-11-29T16:26:02Z'}], 'lastVisit': {'source': 'https://shopify.com/'}}, 'lineItems': {'edges': [{'node': {'name': 'ssss', 'quantity': 1, 'product': {'category': {'name': 'Educational Toys'}, 'title': 'ssss', 'variants': {'nodes': [{'displayName': 'ssss - Default Title', 'price': '222.00'}]}}}}]}}}, {'node': {'id': 'gid://shopify/Order/5892711776511', 'updatedAt': '2024-11-29T16:29:30Z', 'customer': {'id': 'gid://shopify/Customer/7664803578111'}, 'customerJourney': {'customerOrderIndex': 0, 'daysToConversion': 1, 'firstVisit': {'source': 'direct'}, 'moments': [{'occurredAt': '2024-11-29T16:29:03Z'}], 'lastVisit': None}, 'lineItems': {'edges': [{'node': {'name': 'drgdgdfgrdrf', 'quantity': 1, 'product': {'category': {'name': 'Computer Software'}, 'title': 'drgdgdfgrdrf', 'variants': {'nodes': [{'displayName': 'drgdgdfgrdrf - Default Title', 'price': '2.00'}]}}}}]}}}]}}, 'extensions': {'cost': {'requestedQueryCost': 130, 'actualQueryCost': 16, 'throttleStatus': {'maximumAvailable': 2000.0, 'currentlyAvailable': 1984, 'restoreRate': 100.0}}}}
-        #data={'data': {'orders': {'edges': [{'node': {'id': 'gid://shopify/Order/5887448056063', 'updatedAt': '2024-11-27T10:06:04Z', 'customer': {'id': 'gid://shopify/Customer/7656824865023'}, 'customerJourney': {'customerOrderIndex': 0, 'daysToConversion': 3, 'firstVisit': {'source': 'direct'}, 'moments': [{'occurredAt': '2024-11-24T19:28:53Z'}, {'occurredAt': '2024-11-26T17:55:17Z'}, {'occurredAt': '2024-11-26T18:43:16Z'}, {'occurredAt': '2024-11-26T22:45:25Z'}, {'occurredAt': '2024-11-27T06:00:21Z'}], 'lastVisit': {'source': 'direct'}}, 'lineItems': {'edges': [{'node': {'name': 'p1', 'quantity': 7, 'product': {'category': {'name': 'Educational Software'}, 'title': 'p1', 'variants': {'nodes': [{'displayName': 'p1 - Default Title', 'price': '11.00'}]}}}}]}}}, {'node': {'id': 'gid://shopify/Order/5887563170047', 'updatedAt': '2024-11-27T11:01:32Z', 'customer': {'id': 'gid://shopify/Customer/7656824865023'}, 'customerJourney': {'customerOrderIndex': 0, 'daysToConversion': 1, 'firstVisit': {'source': 'direct'}, 'moments': [{'occurredAt': '2024-11-27T07:52:10Z'}], 'lastVisit': None}, 'lineItems': {'edges': [{'node': {'name': 'p1', 'quantity': 1, 'product': {'category': {'name': 'Educational Software'}, 'title': 'p1', 'variants': {'nodes': [{'displayName': 'p1 - Default Title', 'price': '11.00'}]}}}}]}}}, {'node': {'id': 'gid://shopify/Order/5890372894975', 'updatedAt': '2024-11-28T15:21:53Z', 'customer': {'id': 'gid://shopify/Customer/7656824865023'}, 'customerJourney': {'customerOrderIndex': 0, 'daysToConversion': 1, 'firstVisit': {'source': 'direct'}, 'moments': [{'occurredAt': '2024-11-27T11:07:35Z'}, {'occurredAt': '2024-11-27T12:47:39Z'}, {'occurredAt': '2024-11-28T15:07:57Z'}], 'lastVisit': {'source': 'direct'}}, 'lineItems': {'edges': [{'node': {'name': 'p1', 'quantity': 1, 'product': {'category': {'name': 'Educational Software'}, 'title': 'p1', 'variants': {'nodes': [{'displayName': 'p1 - Default Title', 'price': '11.00'}]}}}}]}}}, {'node': {'id': 'gid://shopify/Order/5890492793087', 'updatedAt': '2024-11-28T16:51:13Z', 'customer': {'id': 'gid://shopify/Customer/7656824865023'}, 'customerJourney': {'customerOrderIndex': 0, 'daysToConversion': 1, 'firstVisit': {'source': 'direct'}, 'moments': [{'occurredAt': '2024-11-28T15:22:02Z'}, {'occurredAt': '2024-11-28T15:24:57Z'}], 'lastVisit': {'source': 'https://shopify.com/'}}, 'lineItems': {'edges': [{'node': {'name': 'fsfsfcsd', 'quantity': 5, 'product': {'category': {'name': 'Business & Productivity Software'}, 'title': 'fsfsfcsd', 'variants': {'nodes': [{'displayName': 'fsfsfcsd - Default Title', 'price': '1111.00'}]}}}}]}}}, {'node': {'id': 'gid://shopify/Order/5890493579519', 'updatedAt': '2024-11-28T16:51:40Z', 'customer': {'id': 'gid://shopify/Customer/7656824865023'}, 'customerJourney': None, 'lineItems': {'edges': [{'node': {'name': 'ssss', 'quantity': 4, 'product': {'category': {'name': 'Educational Toys'}, 'title': 'ssss', 'variants': {'nodes': [{'displayName': 'ssss - Default Title', 'price': '222.00'}]}}}}]}}}]}}, 'extensions': {'cost': {'requestedQueryCost': 130, 'actualQueryCost': 41, 'throttleStatus': {'maximumAvailable': 2000.0, 'currentlyAvailable': 1959, 'restoreRate': 100.0}}}}
-        # Initialize an empty list to store the extracted data
-        orders = data.get("data", {}).get("orders", {}).get("edges", [])
+
         customer_data = []
+        for data in all_customer_interactions:
+            # Initialize an empty list to store the extracted data
+            orders = data.get("data", {}).get("orders", {}).get("edges", [])
+            
 
-        for order in orders:
-            node = order.get("node", {})
-            customer_journey = node.get("customerJourney") if node.get("customerJourney") is not None else {}
+            for order in orders:
+                node = order.get("node", {})
+                customer_journey = node.get("customerJourney") if node.get("customerJourney") is not None else {}
 
-            # Safely extract customerJourney fields with additional None checks
-            order_index = customer_journey.get("customerOrderIndex") if customer_journey else None
-            days_to_conversion = customer_journey.get("daysToConversion") if customer_journey else None
-            first_visit_source = (
-                customer_journey.get("firstVisit", {}).get("source") if customer_journey and customer_journey.get("firstVisit") else None
-            )
-            last_visit_source = (
-                customer_journey.get("lastVisit", {}).get("source") if customer_journey and customer_journey.get("lastVisit") else None
-            )
-            moments = (
-                [
-                    {"occurredAt": moment.get("occurredAt")}
-                    for moment in customer_journey.get("moments", [])
-                ]
-                if customer_journey and customer_journey.get("moments")
-                else []
-            )
+                # Safely extract customerJourney fields with additional None checks
+                order_index = customer_journey.get("customerOrderIndex") if customer_journey else None
+                days_to_conversion = customer_journey.get("daysToConversion") if customer_journey else None
+                first_visit_source = (
+                    customer_journey.get("firstVisit", {}).get("source") if customer_journey and customer_journey.get("firstVisit") else None
+                )
+                last_visit_source = (
+                    customer_journey.get("lastVisit", {}).get("source") if customer_journey and customer_journey.get("lastVisit") else None
+                )
+                moments = (
+                    [
+                        {"occurredAt": moment.get("occurredAt")}
+                        for moment in customer_journey.get("moments", [])
+                    ]
+                    if customer_journey and customer_journey.get("moments")
+                    else []
+                )
 
-            line_items = node.get("lineItems", {}).get("edges", [])
+                line_items = node.get("lineItems", {}).get("edges", [])
 
-            for item in line_items:
-                product_data = item.get("node", {})
-                product = product_data.get("product", {})
-                variants = product.get("variants", {}).get("nodes", [])
+                for item in line_items:
+                    product_data = item.get("node", {})
+                    product = product_data.get("product", {})
+                    variants = product.get("variants", {}).get("nodes", [])
+                    print(f"product------------------------------------------------------")
+                    print(product["id"])
+                    print(f"product------------------------------------------------------")
 
-                customer_data.append({
-                    "customer_id": node.get("customer", {}).get("id"),
-                    "product_name": product_data.get("name"),
-                    "quantity": product_data.get("quantity"),
-                    "category": product.get("category", {}).get("name"),
-                    "variants": [
-                        {"displayName": variant.get("displayName"), "price": variant.get("price")}
-                        for variant in variants
-                    ],
-                    "order_index": order_index,
-                    "days_to_conversion": days_to_conversion,
-                    "first_visit_source": first_visit_source,
-                    "last_visit_source": last_visit_source,
-                    "moments": moments,
-                    "order_updated_at": node.get("updatedAt"),
-                })
+                    customer_data.append({
+                        "customer_id": node.get("customer", {}).get("id"),
+                        "product_id": product["id"],
+                        "logged_in_customer": activity_data["customerId"],
+                        "product_name": product_data.get("name", "Unknown Product"),
+                        "quantity": product_data.get("quantity") if product.get("quantity") else None,
+                        "category": product["category"]["name"] if product.get("category") and "name" in product["category"] else None,
+                        "variants": [
+                            {"displayName": variant.get("displayName"), "price": variant.get("price")}
+                            for variant in variants
+                        ],
+                        "order_index": order_index,
+                        "days_to_conversion": days_to_conversion,
+                        "first_visit_source": first_visit_source,
+                        "last_visit_source": last_visit_source,
+                        "moments": moments,
+                        "order_updated_at": node.get("updatedAt"),
+                    })
 
-        # Return the customer_data or process it as needed
-        # Extracting customer data: interactions (product, quantity)
-        customer_interactions = {(entry['product_name'], entry['quantity']) for entry in customer_data}
-        # List of unique customers and products
-        customers = [f'gid://shopify/Customer/{activity_data["customerId"]}']  # Single logged-in customer
-        products = all_products_in_store  # All products in the store
 
-        # Initialize the interaction matrix with zeros
-        interaction_matrix = np.zeros((len(customers), len(products)))
-        print("interaction_matrix", interaction_matrix)
+        logger.debug(f"This is a debug customer_data-->{customer_data}")
+                # Convert data to DataFrame
+        df = pd.json_normalize(customer_data, record_path=['moments'], meta=['customer_id', 'logged_in_customer','product_name', 'product_id', 'quantity', 'category', 'variants', 'order_index', 'days_to_conversion', 'first_visit_source', 'last_visit_source', 'order_updated_at'])
 
-        # Map customer and product names to indices
-        customer_to_index = {customer: idx for idx, customer in enumerate(customers)}
-        product_to_index = {product: idx for idx, product in enumerate(products)}
+        # Convert 'occurredAt' to datetime
+        df['occurredAt'] = pd.to_datetime(df['occurredAt'])
 
-        # Fill the interaction matrix with quantities
-        for entry in customer_data:
-            customer_idx = customer_to_index[entry['customer_id']]
-            product_idx = product_to_index[entry['product_name']]
-            interaction_matrix[customer_idx, product_idx] += entry['quantity']  # Adding interaction (quantity)
-
-        # Convert interaction matrix to DataFrame for better visualization
-        import pandas as pd
-        interaction_df = pd.DataFrame(interaction_matrix, index=customers, columns=products)
-
-        print(interaction_df)
-
-        from sklearn.decomposition import TruncatedSVD
-
-        # Apply SVD to the interaction matrix
-        svd = TruncatedSVD(n_components=3, random_state=42)
-        svd_matrix = svd.fit_transform(interaction_matrix)
-
-        # Reconstruct the matrix
-        reconstructed_matrix = svd.inverse_transform(svd_matrix)
-
-        # Example: Recommend products for the first customer (customer 0)
-        customer_index = 0
-        customer_scores = reconstructed_matrix[customer_index]
-
-        # Get products that the customer hasn't interacted with yet
-        predicted_interests = []
-        for product_index, score in enumerate(customer_scores):
-            if interaction_matrix[customer_index, product_index] == 0:  # Not interacted with
-                predicted_interests.append((products[product_index], score))
-
-        # Sort products by predicted score
-        predicted_interests.sort(key=lambda x: x[1], reverse=True)
-
-        # Display top 5 recommended products
-        top_recommended_products = predicted_interests[:5]
-        print(f"Top recommended products for customer {customers[customer_index]}: {top_recommended_products}")
-        # # Convert to DataFrame
-        # df = pd.DataFrame(customer_data)
-
-        # # Extract price from the 'variants' list
-        # # Convert to DataFrame
-        # df = pd.DataFrame(customer_data)
-        # print(df)
-
-        # # Extract price from the 'variants' column
-        # df['price'] = df['variants'].apply(lambda x: float(x[0]['price']) if isinstance(x, list) and x else None)
-        # print(df[['customer_id', 'product_name', 'variants', 'price']])
-        # # Fill missing values in 'last_visit_source' with 'unknown'
-        # df['last_visit_source'].fillna('unknown', inplace=True)
-
-        # # One-Hot Encoding for categorical columns
-        # encoder = OneHotEncoder(drop='first', sparse_output=False)
-        # encoded_columns = encoder.fit_transform(df[['first_visit_source', 'last_visit_source']])
-        # encoded_df = pd.DataFrame(encoded_columns, columns=encoder.get_feature_names_out())
-
-        # # Concatenate with the original DataFrame and drop the original categorical columns
-        # df = pd.concat([df, encoded_df], axis=1)
-        # df.drop(['first_visit_source', 'last_visit_source'], axis=1, inplace=True)
-
-        # # Display processed DataFrame
-        # print(df.head())
+        # Expand 'variants' to include price and displayName
+        df['product_price'] = df['variants'].apply(lambda x: float(x[0]['price']) if x else None)
+        df['product_displayName'] = df['variants'].apply(lambda x: x[0]['displayName'] if x else None)
 
 
 
-        # # Parse timestamps
-        # df['order_updated_at'] = pd.to_datetime(df['order_updated_at'])
+        now_utc = datetime.now(pytz.utc)
+        # Calculate the days since the last purchase
+        df['days_since_last_purchase'] = (now_utc - df['occurredAt']).dt.days
+        df['quantity'] = df['quantity'].apply(lambda x: x if x is not None else 1)
 
-        # # Calculate recency of the last order (days since last order)
-        # df['order_updated_at'] = pd.to_datetime(df['order_updated_at']).dt.tz_convert('UTC')
-        # df['days_since_last_purchase'] = (pd.to_datetime('now', utc=True) - df['order_updated_at']).dt.days
+        # Total quantity purchased per product
+        product_purchase_quantity = df.groupby('product_name')['quantity'].sum()
 
-
-        # # Aggregate data by customer
-        # customer_summary = df.groupby('customer_id').agg({
-        #     'quantity': 'sum',       # Total quantity purchased
-        #     'price': 'mean',         # Average price
-        #     'days_since_last_purchase': 'mean',  # Mean days since last purchase
-        # }).reset_index()
-
-        # # Display aggregated customer data
-        # print(customer_summary)
-
-
-        # # Create customer-product matrix (pivot table)
-        # customer_product_matrix = df.pivot_table(index='customer_id', columns='product_name', values='quantity', aggfunc='sum', fill_value=0)
-        # from tabulate import tabulate
-        # # Display matrix
-        # print(tabulate(customer_product_matrix, headers='keys', tablefmt='pretty'))
-
-        # customer_product_matrix = np.nan_to_num(customer_product_matrix, nan=0)
-
-        # print(customer_product_matrix)
         
 
+        # Total revenue per product
+        
+        df['total_revenue'] = df["quantity"] * df['product_price']
+        # print(tabulate(df, headers='keys', tablefmt='pretty', showindex=False))
+        
+        product_revenue = df.groupby('product_name')['total_revenue'].sum()
+        logger.debug(f"This is a debug product_purchase_quantity-->{product_purchase_quantity}")
+        logger.debug(f"This is a debug product_revenue-->{product_revenue}")
 
-        # from sklearn.decomposition import TruncatedSVD
-
-        # # Step 1: Apply Singular Value Decomposition (SVD) on the customer’s data
-        # svd = TruncatedSVD(n_components=3, random_state=42)
-        # svd_matrix = svd.fit_transform(customer_product_matrix)
-
-        # # Step 2: Reconstruct the original matrix (approximately) based on SVD
-        # reconstructed_matrix = svd.inverse_transform(svd_matrix)
-
-        # # Step 3: Recommend products for the logged-in customer
-        # # Extract scores for the logged-in customer (which is the only row in the matrix)
-        # customer_scores = reconstructed_matrix[0]
-
-        # print(f"Customer scores (reconstructed matrix): {customer_scores}")
-
-        # # Step 4: Get products with the highest predicted scores that the customer has not interacted with yet
-        # predicted_interests = []
-        # for product_index, score in enumerate(customer_scores):
-        #     if customer_product_matrix[0, product_index] == 0:  # Product not interacted with
-        #         predicted_interests.append((product_index, score))
-
-        # # Sort products by predicted score in descending order (higher scores mean higher likelihood of interest)
-        # predicted_interests.sort(key=lambda x: x[1], reverse=True)
-
-        # # Display top 5 recommended products for the logged-in customer
-        # top_recommended_products = predicted_interests[:5]
-
-        # # Output recommended products (example: product indices and scores)
-        # print(f"Top recommended products for the logged-in customer: {top_recommended_products}")
+        logger.debug(f"df['quantity']-------->{df['quantity']}")
+      
 
 
+        # Total spend per customer
+        df['total_spent'] = df['quantity'] * df['product_price']
+        customer_total_spent = df.groupby('customer_id')['total_spent'].sum()
+
+        # Sort by total spend
+        high_value_customers = customer_total_spent.sort_values(ascending=False)
+     
+        logger.debug(f"This is a debug high_value_customers.head()==>{high_value_customers.head()}")
+        from sklearn.metrics.pairwise import cosine_similarity
+        import numpy as np
+
+        # Pivot table with customers as rows and products as columns
+        pivot_table = df.pivot_table(index='customer_id', columns='product_name', values='quantity', aggfunc='sum', fill_value=0)
+
+        # Calculate cosine similarity between customers
+        cosine_sim = cosine_similarity(pivot_table)
+
+        # Example: Find most similar customers to customer at index 0 (first customer)
+        target_customer_idx = 0  # Customer at index 0
+        similar_customers = cosine_sim[target_customer_idx]
+
+        # Create a DataFrame with the similarity scores and customer IDs
+        similarity_df = pd.DataFrame({
+            'customer_id': pivot_table.index,
+            'similarity_score': similar_customers
+        })
+
+        # Exclude the self-similarity (1.0 score)
+        similarity_df = similarity_df[similarity_df['customer_id'] != pivot_table.index[target_customer_idx]]
+
+        # Sort by similarity score (descending)
+        similarity_df_sorted = similarity_df.sort_values(by='similarity_score', ascending=False)
+
+        # Display the top N similar customers (e.g., top 5)
+        top_similar_customers = similarity_df_sorted.head(5)
+
+        logger.debug(f"This is a debug top_similar_customers-->{top_similar_customers}")
+
+
+        # Get products purchased by these similar customers
+        similar_customers_ids = top_similar_customers['customer_id'].tolist()
+        recommended_products = df[df['customer_id'].isin(similar_customers_ids)]
+
+        # Recommend top N products (you could choose to recommend the most purchased ones)
+        recommended_products = df.groupby('product_name').agg(
+                product_id=('product_id', 'first'),
+                quantity=('quantity', 'sum'),
+                customer_id=('customer_id', 'first'),
+                loggedin_customer = ('logged_in_customer', 'first')
+            ).sort_values('quantity', ascending=False)
+
+
+        logger.debug(f"recommended_products.head(): {recommended_products.head()}")
+
+        # Assuming 'recommended_products' is your DataFrame
+        product_names = recommended_products.head().index.tolist()
+
+        # Print the dynamically created product_names array
+        print(product_names)
+
+        # Assuming the product names are dynamically passed or updated in the index
+        recommended_products = pd.DataFrame(recommended_products.head(), index=product_names)
+
+
+        from django.core import serializers
+        self.store_recommendations_from_df(recommended_products)
+        recommendations = ProductRecommendation.objects.filter(loggedin_customer_id=activity_data["customerId"]).order_by('-recommendation_score')
+        # Serialize the queryset
+        recommendations_json = serializers.serialize('json', recommendations)
+
+        # This is the JSON you can pass to the frontend
+        print(recommendations_json)
+        extracted_data = []
+        # The recommendations_json is a list of dictionaries (already deserialized)
+        for entry in json.loads(recommendations_json):  # Parse the JSON string to Python objects
+            # Ensure entry contains the 'fields' key
+            if 'fields' in entry:
+                fields = entry['fields']
+                extracted_data.append({
+                    "product_id": fields["product_id"],
+                    "recommendation_score": fields["recommendation_score"],
+                    "timestamp": fields["timestamp"],
+                    "last_updated": fields["last_updated"],
+                    "product_name": fields["product_name"],
+                    "customer_id": fields["customer_id"],
+                    "loggedin_customer_id": fields["loggedin_customer_id"]
+                })
+            else:
+                print(f"Invalid entry format: {entry}")
+
+        # Convert the extracted data to JSON
+        json_output = json.dumps(extracted_data)
+
+        # Print the result
+        print(f"json_output.................>{json_output}")
+        helper = ShopifyThemeHelper(shop)
+
+        print("helper...........................................")
+
+        url = f"{settings.SHOPIFY_APP_URL}/slider-settings/"  # Adjust the URL as per your API
+
+
+        response = requests.get(url, headers=headers)
+
+        # Check if the response is successful
+        if response.status_code == 200:
+            # Parse the JSON response
+            settings_data = response.json()
+            print("Slider settings:", settings_data)
+        else:
+            print(f"Failed to fetch settings. Status code: {response.status_code}")
+            print("Error:", response.text)
+
+        
+        app_url = f"{settings.SHOPIFY_APP_URL}/slider-settings/"
+        params = {"customer": activity_data["customerId"]}
+        responsesettings = requests.get(app_url,params=params)
+        print(responsesettings.json()["settings"])
+        config_data_json = json.dumps(responsesettings.json()["settings"])
+        helper.inject_script_to_theme(config_data_json, json_output)
+
+
+
+
+        
+    def store_recommendations_from_df(self,df):
+        """
+        Processes the DataFrame and stores or updates product recommendations in the database.
+        
+        :param df: A pandas DataFrame containing product recommendation data
+        """
+        for product_name,  row in df.iterrows():
+            product_id = row['product_id']
+            recommendation_score = row['quantity']
+            customer_id = row['customer_id']
+            loggedin_customer_id = row['loggedin_customer']
+            
+            
+            try:
+                # Try to get the existing recommendation
+                recommendation = ProductRecommendation.objects.get(product_id=product_id)
+                # Update the recommendation score if it exists
+                recommendation.recommendation_score = recommendation_score
+                recommendation.customer_id = customer_id
+                recommendation.loggedin_customer_id = loggedin_customer_id
+                recommendation.product_name = product_name  # Optionally update the product name
+                recommendation.save()
+                print(f"Updated recommendation for {product_name} ({product_id}) with score {recommendation_score}")
+            except ProductRecommendation.DoesNotExist:
+                # If the recommendation doesn't exist, create a new record
+                recommendation = ProductRecommendation.objects.create(
+                    product_id=product_id,
+                    product_name=product_name,
+                    recommendation_score=recommendation_score,
+                    customer_id=customer_id,
+                    loggedin_customer_id = loggedin_customer_id
+                )
+                print(f"Created new recommendation for {product_name} ({product_id}) with score {recommendation_score}")
+
+
+
+       
     def install_customer_tracking_script(self,shop,access_token):
         """
         Install the tracking script into the Shopify store.
@@ -813,86 +892,480 @@ class TrackActivityView(APIView):
 
         # response = requests.post(endpoint, json=payload, headers=headers)
         # print(response.json())
+from faker import Faker
+import random
 
 
 
 
 
-@method_decorator(csrf_exempt, name='dispatch')
-class ShopifyThemeUpdater(View):
+SHOP_URL = "smarttailor324.myshopify.com"  # Replace with your store's URL
 
-    def post(self, request):
+# Function to create fake customer
+def create_fake_customer():
+    # Retrieve the store information from the ShopifyStore model
+    shop = ShopifyStore.objects.filter(shop_name="smarttailor324.myshopify.com").first()
+    fake = Faker()
+    if not shop:
+        print(f"No Shopify store found for {SHOP_URL}")
+        return
+    
+    # Shopify GraphQL mutation query to create a customer
+    mutation = """
+    mutation customerCreate($input: CustomerInput!) {
+        customerCreate(input: $input) {
+            userErrors {
+                field
+                message
+            }
+            customer {
+                id
+                email
+                phone
+                taxExempt
+                firstName
+                lastName
+                amountSpent {
+                    amount
+                    currencyCode
+                }
+                smsMarketingConsent {
+                    marketingState
+                    marketingOptInLevel
+                    consentUpdatedAt
+                }
+            }
+        }
+    }
+    """
 
-        data = json.loads(request.body)
-        version = '2024-10'
-        shop_id = data.get("shopId")
-        shop = ShopifyStore.objects.filter(id=shop_id).first()
-        # Initialize the Shopify session (use correct API version and access token)
-        session = shopify.Session(shop.shop_name, version, shop.access_token)
-        shopify.ShopifyResource.activate_session(session)
+    
 
-        # Fetch themes
-        url = f'https://{shop.shop_name}/admin/api/{version}/themes.json'
-        headers = {
-            'X-Shopify-Access-Token': shop.access_token  # Include the access token in the header
+    headers = {
+        "Content-Type": "application/json",
+        "X-Shopify-Access-Token": shop.access_token
+    }
+
+    # Define the customer input data with Faker
+    variables = {
+        "input": {
+            "firstName": fake.first_name(),
+            "lastName": fake.last_name(),
+            "email": fake.email(),
+            "phone": fake.phone_number(),
+            "addresses": [
+                {
+                    "address1": fake.street_address(),
+                    "city": fake.city(),
+                    "province": fake.state(),
+                    "country": fake.country(),
+                    "zip": fake.zipcode()
+                }
+            ]
+        }
+    }
+
+    print(shop.shop_name)
+
+    # Shopify GraphQL endpoint URL
+    GRAPHQL_URL = f"https://{shop.shop_name}/admin/api/2024-10/graphql.json"
+
+    # Making the POST request to Shopify's GraphQL API
+    response = requests.post(GRAPHQL_URL, headers=headers, json={"query": mutation, "variables": variables})
+    print(response.status_code)
+    # # Parse the response
+    # if response.status_code == 200:
+    #     data = response.json()
+
+    #     if 'errors' in data:
+    #         print("GraphQL Errors:", data['errors'])
+    #     else:
+    #         customer = data['data']['customerCreate']['customer']
+    #         print(f"Customer created with ID: {customer['id']}")
+    #         print(f"Name: {customer['firstName']} {customer['lastName']}")
+    #         print(f"Email: {customer['email']}")
+    #         print(f"Phone: {customer['phone']}")
+    # else:
+    #     print(f"Error: {response.status_code} - {response.text}")
+
+# Function to create fake product
+def create_fake_product():
+    fake = Faker()
+    shop = ShopifyStore.objects.filter(shop_name=SHOP_URL).first()
+    mutation = """
+    mutation productCreate($input: ProductInput!) {
+        productCreate(input: $input) {
+            product {
+                id
+            }
+            userErrors {
+                field
+                message
+            }
+        }
+    }
+    """
+
+    headers = {
+        "Content-Type": "application/json",
+        "X-Shopify-Access-Token": shop.access_token
+    }
+
+    # Define fake product input data
+    variables = {
+        "input": {
+            "title": fake.word().capitalize(),  # Random product title
+            "productType": fake.word().capitalize(),  # Random product type
+            "vendor": fake.company()  # Random vendor name
+        }
+    }
+
+
+    # Headers including the authorization token
+    headers = {
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': shop.access_token
+    }
+    GRAPHQL_URL = f"https://{SHOP_URL}/admin/api/2024-10/graphql.json"
+    # Making the POST request to Shopify's GraphQL API
+    response = requests.post(GRAPHQL_URL, headers=headers, json={"query": mutation, "variables": variables})
+    print("products", response.status_code)
+
+# Function to create fake order
+def create_fake_order(customer_id, product_id,amount):
+    fake = Faker()
+    # GraphQL mutation query
+    # GraphQL Mutation
+    mutation = """
+mutation OrderCreate($order: OrderCreateOrderInput!, $options: OrderCreateOptionsInput) {
+  orderCreate(order: $order, options: $options) {
+    userErrors {
+      field
+      message
+    }
+    order {
+      id
+      displayFinancialStatus
+      shippingAddress {
+        lastName
+        address1
+        city
+        provinceCode
+        countryCode
+        zip
+      }
+      billingAddress {
+        lastName
+        address1
+        city
+        provinceCode
+        countryCode
+        zip
+      }
+      customer {
+        id
+      }
+    }
+  }
+}
+"""
+
+    variables = {
+    "order": {
+        "lineItems": [
+            {
+                "variantId": product_id,
+                "quantity": random.randint(1, 10)
+            }
+        ],
+        "customerId": customer_id,
+        "transactions":{
+           "amountSet":{
+               "shopMoney":{
+                   "amount": amount,
+                   "currencyCode":fake.currency_code()
+               }
+           }
+        },
+        "financialStatus": "PENDING",
+        "shippingAddress": {
+            "lastName": fake.word(),
+            "address1": "123 Main St",
+            "city": "Ottawa",
+            "countryCode": "CA",
+            "provinceCode": "ON",
+            "zip": "K1P 1J1"
+        },
+        "billingAddress": {
+            "lastName": fake.word(),
+            "address1": "321 Secondary St",
+            "city": "Ottawa",
+            "countryCode": "CA",
+            "provinceCode": "ON",
+            "zip": "K1P 1J1"
+        }
+    }
+}
+
+  
+    GRAPHQL_URL = f"https://{SHOP_URL}/admin/api/2024-10/graphql.json"
+    shop = ShopifyStore.objects.filter(shop_name=SHOP_URL).first()
+
+    headers = {
+            "Content-Type": "application/json",
+            "X-Shopify-Access-Token": shop.access_token
         }
 
-        response = requests.get(url, headers=headers)
-        print(response.status_code)
+    # Making the POST request to Shopify's GraphQL API
+    response = requests.post(GRAPHQL_URL, headers=headers, json={"query": mutation, "variables": variables})
+    print("orders", response.status_code)
 
-        main_theme = None
+# Django view to generate fake data
+@csrf_exempt  # Disable CSRF validation for the sake of testing (ensure security in production)
+def generate_fake_data(request):
+    if request.method == "POST":
+            
+            data_ordered = []
+
+            # grouped_data = {"pids": [], "varIds": [], "cids": []}
+            
+            def fetch_products():
+                query = """
+                query {
+                products(first: 10, reverse: true) {
+                    edges {
+                    node {
+                        id
+                        title
+                        variants(first:5){
+                          nodes{
+                          id
+                          price
+                          
+                          }
+                        
+                        }
+                        }
+                    }
+                    }
+                }
+                
+
+                """
+                
+                SHOP_URL = "smarttailor324.myshopify.com"  
+
+                GRAPHQL_URL = f"https://{SHOP_URL}/admin/api/2024-10/graphql.json"
+                shop = ShopifyStore.objects.filter(shop_name=SHOP_URL).first()
+
+                headers = {
+                    "Content-Type": "application/json",
+                    "X-Shopify-Access-Token": shop.access_token,
+                }
+
+                response = requests.post(GRAPHQL_URL, headers=headers, json={"query": query})
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    if "errors" in data:
+                        print("Errors:", data["errors"])
+                    else:
+                        products = data["data"]["products"]["edges"]
+                        for product in products:
+                            temp = {}
+                            nodeVariants = product["node"]["variants"]["nodes"]
+                            for var in nodeVariants:
+                                temp["pid"]=product["node"]["id"]
+                                temp["varIds"]=var["id"]
+                                temp["price"]=var["price"]
+                               
+                                query = """
+                                                query {
+                                    customers(first: 10) {
+                                        edges {
+                                        node {
+                                            id
+                                        }
+                                        }
+                                    }
+                                    }
+
+                                  """
+                
+                                SHOP_URL = "smarttailor324.myshopify.com"  
+
+                                GRAPHQL_URL = f"https://{SHOP_URL}/admin/api/2024-10/graphql.json"
+                                shop = ShopifyStore.objects.filter(shop_name=SHOP_URL).first()
+
+                                headers = {
+                                    "Content-Type": "application/json",
+                                    "X-Shopify-Access-Token": shop.access_token,
+                                }
+
+                                response = requests.post(GRAPHQL_URL, headers=headers, json={"query": query})
+                                if response.status_code == 200:
+                                    data = response.json()
+                                    if "errors" in data:
+                                        print("Errors:", data["errors"])
+                                    else:
+                                        customers = data["data"]["customers"]["edges"]
+                                        for c in customers:
+                                            temp["cid"] = c["node"]["id"]
+                                            data_ordered.append(temp)
+                                            
+                                            
+                                else:
+                                    print(f"Error: {response.status_code} - {response.text}")
+
+                                    
+                            
+                else:
+                    print(f"Error: {response.status_code} - {response.text}")
+            # Call the function
+            fetch_products()
+
+            
+            # Call the function
+            
+            
+            
+
+            # Step 1: Filter the data to include only entries with `varIds` and `price`
+            filtered_data = [entry for entry in data_ordered if 'varIds' in entry and 'price' in entry]
+
+            # Step 2: Shuffle the filtered data
+            random.shuffle(filtered_data)
+
+            # The filtered and shuffled data
+           
+
+            # Group data by pid, varId, and cid
+
+                        # Example usage
+            
+
+            # Function to create orders from the filtered data
+            def create_orders(filtered_data, num_orders):
+                # Filter only valid products and customers
+
+                
+                
+                # Create the specified number of orders
+                for _ in range(num_orders):
+                    logger.debug(f"data_ordered--------->{filtered_data}")
+                    for cc in filtered_data:
+                        # Extract customer_id, product_id, and amount (price)
+                        customer_id = cc["cid"]
+                        product_id = cc["varIds"]
+                        amount = cc["price"]
+        
+
+                        logger.debug(f"customer_id, product_id, amount,displayName----> {customer_id}, {product_id} , {amount}")
+                        create_fake_order(customer_id, product_id, amount)
+    
+
+                    
+
+                    
+
+                #     # Create and append the order
+                #     # create_fake_order(customer_id, product_id, amount,displayName)
+
+
+            create_orders(filtered_data, 40)
+            
+            return JsonResponse({
+                    "customers_created": "jj",
+                    # "products_created": [product["id"] for product in products],
+                    # "orders_created": orders
+                })
+        
+        
+
+    else:
+        return JsonResponse({"error": "Invalid HTTP method. Use POST."}, status=405)
+    
+
+
+
+
+class ShopifyThemeService:
+
+    def __init__(self, shop_id, version='2024-10'):
+        self.shop_id = shop_id
+        self.version = version
+        self.shop = ShopifyStore.objects.filter(id=shop_id).first()
+        print(self.shop,shop_id)
+        self.session = None
+        self.main_theme = None
+        self.headers = {
+            'X-Shopify-Access-Token': self.shop.access_token
+        }
+        self.theme_id = None
+
+    def initialize_shopify_session(self):
+        """Initialize the Shopify session."""
+        session = shopify.Session(self.shop.shop_name, self.version, self.shop.access_token)
+        shopify.ShopifyResource.activate_session(session)
+
+    def fetch_main_theme(self):
+        """Fetch the main theme."""
+        url = f'https://{self.shop.shop_name}/admin/api/{self.version}/themes.json'
+        response = requests.get(url, headers=self.headers)
+
         if response.status_code == 200:
             themes = response.json().get('themes', [])
-            main_theme = [theme for theme in themes if theme.get('role') == 'main']
-            if main_theme:
-                print(f"Main theme found: {main_theme[0]['name']}")
-            else:
-                print("No main theme found")
+            self.main_theme = [theme for theme in themes if theme.get('role') == 'main']
+            if not self.main_theme:
+                raise Exception("No main theme found")
+            self.theme_id = self.main_theme[0]["id"]
+            print(f"Main theme ID: {self.theme_id}")
         else:
             raise Exception(f"Error fetching themes: {response.status_code}, {response.text}")
 
-        if not main_theme:
-            raise Exception("No main theme found")
-        
-        theme_id = main_theme[0]["id"]
-        print(f"Main theme ID: {theme_id}")
-
-        # Fetch the 'theme.liquid' content
-        url = f"https://{shop.shop_name}/admin/api/{version}/themes/{theme_id}/assets.json"
+    def fetch_theme_content(self):
+        """Fetch the 'theme.liquid' content."""
+        url = f"https://{self.shop.shop_name}/admin/api/{self.version}/themes/{self.theme_id}/assets.json"
         params = {"asset[key]": "layout/theme.liquid"}
-        response = requests.get(url, headers=headers, params=params)
+        response = requests.get(url, headers=self.headers, params=params)
 
         if response.status_code == 200:
-            theme_content = response.json().get("asset", {}).get("value")
-            if theme_content:
-                print("Fetched theme.liquid content successfully.")
-                script_to_add = """
-                <script>
-  {% if customer %}
-    window.loggedInCustomer = {
-      id: "{{ customer.id }}",
-      email: "{{ customer.email }}",
-      first_name: "{{ customer.first_name }}",
-      last_name: "{{ customer.last_name }}"
-    };
-    console.log("Logged in customer:", window.loggedInCustomer);
-  {% else %}
-    console.log("No customer is logged in.");
-    window.loggedInCustomer = null;
-  {% endif %}
-</script>
-                """
-                updated_liquid = theme_content.replace("</body>", script_to_add + "\n</body>")
-                self.update_theme_liquid(theme_id, updated_liquid, shop,version)
-                return JsonResponse({"message": "Code Installed successfuly"}, status=status.HTTP_200_OK)
-            else:
-                print("Error: theme.liquid content is empty.")
+            return response.json().get("asset", {}).get("value")
         else:
-            print(f"Error fetching theme.liquid: {response.status_code}, {response.text}")
+            raise Exception(f"Error fetching theme.liquid: {response.status_code}, {response.text}")
 
-    # Step 2: Update the `theme.liquid` File
-    def update_theme_liquid(self,theme_id, updated_content, shop, version):
-        url = f"https://{settings.SHOPIFY_API_KEY}:{settings.SHOPIFY_API_SECRET}@{shop.shop_name}/admin/api/{version}/themes/{theme_id}/assets.json"
+    def inject_script_and_update_theme(self, theme_content ):
+        """Inject the script and update the theme.liquid file."""
+
+
+       
+        script_to_add = """
+        <script>
+        {% if customer %}
+        window.loggedInCustomer = {
+            id: "{{ customer.id }}",
+            email: "{{ customer.email }}",
+            first_name: "{{ customer.first_name }}",
+            last_name: "{{ customer.last_name }}"
+        };
+        console.log("Logged in customer:", window.loggedInCustomer);
+        {% else %}
+        console.log("No customer is logged in.");
+        window.loggedInCustomer = null;
+        {% endif %}
+        </script>
+        """
+
+            # Check if the script already exists
+        if script_to_add.strip() in theme_content:
+            print("Script already present in theme.liquid. Skipping addition.")
+            return JsonResponse({"message": "Script already exists."}, status=status.HTTP_200_OK)
+        updated_liquid = theme_content.replace("</body>", script_to_add + "\n</body>")
+        return self.update_theme_liquid(updated_liquid)
+
+    def update_theme_liquid(self, updated_content):
+        """Update the theme.liquid file with the new content."""
+        url = f"https://{settings.SHOPIFY_API_KEY}:{settings.SHOPIFY_API_SECRET}@{self.shop.shop_name}/admin/api/{self.version}/themes/{self.theme_id}/assets.json"
         payload = {
             "asset": {
                 "key": "layout/theme.liquid",
@@ -900,9 +1373,377 @@ class ShopifyThemeUpdater(View):
             }
         }
 
-        headers = {
-    "X-Shopify-Access-Token": shop.access_token
-}
-        response = requests.put(url, json=payload,headers=headers)
+        response = requests.put(url, json=payload, headers=self.headers)
         response.raise_for_status()  # Raise an exception for HTTP errors
-        return JsonResponse({"message": "Code Installed successfuly"}, status=status.HTTP_200_OK)
+        return JsonResponse({"message": "Code Installed successfully"}, status=200)
+
+
+class ShopifyThemeHelper:
+    def __init__(self, shop, api_version="2024-10"):
+        print(f"shop_id---->{shop}")
+        self.shop = shop
+        self.api_version = api_version
+        self.headers = {"X-Shopify-Access-Token": self.shop.access_token}
+        self.base_url = f"https://{self.shop.shop_name}/admin/api/{self.api_version}"
+
+    def get_main_theme_id(self):
+        """Fetches the main theme ID."""
+        url = f"{self.base_url}/themes.json"
+        response = requests.get(url, headers=self.headers)
+
+        if response.status_code == 200:
+            themes = response.json().get("themes", [])
+            main_theme = [theme for theme in themes if theme.get("role") == "main"]
+            if main_theme:
+                return main_theme[0]["id"]
+            else:
+                raise Exception("Main theme not found")
+        else:
+            raise Exception(f"Failed to fetch themes: {response.status_code} {response.text}")
+
+    def get_theme_liquid_content(self, theme_id):
+        """Fetches the `theme.liquid` content."""
+        url = f"{self.base_url}/themes/{theme_id}/assets.json"
+        params = {"asset[key]": "layout/theme.liquid"}
+        response = requests.get(url, headers=self.headers, params=params)
+
+        if response.status_code == 200:
+            return response.json().get("asset", {}).get("value")
+        else:
+            raise Exception(f"Failed to fetch theme.liquid: {response.status_code} {response.text}")
+
+    def update_theme_liquid(self, theme_id, updated_content, key_url):
+        """Updates the `theme.liquid` content."""
+        url = f"{self.base_url}/themes/{theme_id}/assets.json"
+        asset_data = {
+            "asset": {
+                "key": key_url,
+                "value": updated_content,
+            }
+        }
+
+        params = {'asset[key]': key_url}
+
+        response_get = requests.get(url, params=params,headers=self.headers)
+        print(response_get.status_code)
+
+        if response_get.status_code == 200:
+            assets = response_get.json().get('asset', {}).get('value')
+            print(assets)
+            if assets:
+                params = {
+                    "asset[key]": key_url
+                }
+                response = requests.delete(url, params=params,headers={
+        "X-Shopify-Access-Token": self.shop.access_token,
+        
+    })
+                if response.status_code == 200:
+                    print(f"Successfully deleted {key_url}")
+
+                    response = requests.put(url, headers=self.headers, json=asset_data)
+                    if response.status_code == 200:
+                        print(f"Successfully uploaded {asset_data}")
+                    else:
+                        print(f"Failed to upload {asset_data}: {response.text}")
+                else:
+                    print(f"Error deleting file {key_url}: {response.text}")
+
+        else:
+            print(f"First upload")
+            
+            response = requests.put(url, headers=self.headers, json=asset_data)
+            if response.status_code == 200:
+                print(f"Successfully uploaded {asset_data}")
+            else:
+                print(f"Failed to upload {asset_data}: {response.text}")
+    def write_theme_asset(self,api_url, theme_id, asset_key, new_content):
+
+        payload = {
+            "asset": {
+                "key": asset_key,
+                "value": new_content
+            }
+        }
+
+        response = requests.put(f'{api_url}/themes/{theme_id}/assets.json', json=payload, headers=self.headers)
+
+        if response.status_code == 201 or response.status_code == 200:
+            print('Successfully created/updated the theme asset')
+        else:
+            print(f'Error: {response.status_code} - {response.text}')
+
+    def extract_json_from_content(self, content, variable_name):
+        """
+        Extracts the JSON-like value of a specific variable (config_data_json or json_output) from the content.
+        """
+        
+        print(variable_name)
+        # This regex assumes that the JSON is assigned to a variable in a Liquid template
+        pattern = rf"{{% assign {variable_name} = '(.+?)' %}}"
+        match = re.search(pattern, content)
+        print(match.group(1))
+        if match:
+            return match.group(1)
+        return None
+    def remove_recommendation_snippet(self, file_content):
+            """
+            Removes the block of code that assigns config_data_json and json_output and renders the recommendationshtml snippet.
+            """
+            # Regular expression to find and remove the block of code
+            snippet_pattern = r"\{\%\s*if\s*template\s*!=\s*'index'\s*\%\}.*?\{\%\s*endif\s*\%\}"
+            
+            # Use re.sub to remove the snippet block
+            updated_content = re.sub(snippet_pattern, '', file_content, flags=re.DOTALL)
+            
+            return updated_content
+    def inject_json_data(self, html_encoded_content,config_data_json, json_output):
+        """
+        Injects the JSON data into the HTML content before rendering.
+        """
+
+  
+
+        # Replace placeholders in the HTML content with the JSON data
+        updated_content = html_encoded_content
+
+        # Example: Add JSON data to the <script> tag
+        updated_content = re.sub(r'window.config_data_json = .*?;', f'window.config_data_json = {config_data_json};', updated_content)
+        updated_content = re.sub(r'window.json_output = .*?;', f'window.json_output = {json_output};', updated_content)
+
+        # Return the updated content with JSON data injected
+        return updated_content    
+                 
+    def inject_script_to_theme(self, config_data_json, json_output):
+        """Injects a script to the `theme.liquid` file for a specific page."""
+        try:
+            theme_id = self.get_main_theme_id()
+            # theme_content = self.get_theme_liquid_content(theme_id)
+
+            # # Add the script conditionally based on the page handle
+            # conditional_script = script_content
+
+            print("mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm")
+
+            
+
+            with open('assests/recommendations.css', 'r') as file:
+               file_content_css = file.read()
+            css_encoded_content = file_content_css
+            with open('assests/recommendations.js', 'r') as file:
+               file_content_js = file.read()
+            js_encoded_content = file_content_js
+            with open('assests/recommendationshtml.liquid', 'r') as file:
+               file_content = file.read()
+            html_encoded_content = file_content
+
+
+            updated_html_content =self.inject_json_data(html_encoded_content,config_data_json, json_output)
+
+            
+
+
+
+            url = f"{self.base_url}/themes/{theme_id}/assets.json"
+
+            params = {'asset[key]': 'layout/theme.liquid'}
+
+            response_get = requests.get(url, params=params,headers=self.headers)
+            asset_content = response_get.json().get('asset', {}).get('value')
+
+            print("mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm")
+            print(asset_content)
+            print("mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm")
+            print(response_get.status_code)
+
+ 
+
+        # Check if the current config_data_json and json_output are different from the new ones
+            
+            print("Values have changed. Proceeding with the update.")
+            
+
+            # If values changed, update the theme snippet and the theme layout
+            script_content = f"""
+                {{% if template != 'index' %}}
+                        {{% assign config_data_json = '{config_data_json}' %}}
+                        {{% assign json_output = '{json_output}' %}}
+
+                        {{% render 'recommendationshtml', config_data_json: config_data_json, json_output: json_output %}}
+
+                {{% endif %}}
+
+            """
+            file_content = self.get_theme_liquid_content(theme_id)
+            
+
+            if "{% if template != 'index' %}" in response_get.json().get('asset', {}).get('value'):
+                    updated_content = self.remove_recommendation_snippet(file_content)
+                    print(updated_content)
+                    # Add script content just before the </body> tag
+                    body_close_index = updated_content.rfind('</body>')
+                    file_content = updated_content[:body_close_index] + f"\n{script_content}\n" + updated_content[body_close_index:]
+
+                    
+                    
+                    self.update_theme_liquid(theme_id, updated_html_content, key_url="snippets/recommendationshtml.liquid")
+                    self.write_theme_asset(self.base_url, theme_id, 'layout/theme.liquid', file_content)
+            else:
+
+                # Add script content just before the </body> tag
+                    body_close_index = file_content.rfind('</body>')
+                    file_content = file_content[:body_close_index] + f"\n{script_content}\n" + file_content[body_close_index:]
+                    
+                    self.update_theme_liquid(theme_id, updated_html_content, key_url="snippets/recommendationshtml.liquid")
+                    self.write_theme_asset(self.base_url, theme_id, 'layout/theme.liquid', file_content)
+
+            self.update_theme_liquid(theme_id, css_encoded_content,key_url="assets/recommendations.css")
+            self.update_theme_liquid(theme_id, js_encoded_content,key_url="assets/recommendations.js")
+
+            
+            # self.update_theme_liquid(theme_id, file_content, key_url="layout/theme.liquid")
+            
+            return {"message": "Script injected successfully"}
+        except Exception as e:
+            return {"error": str(e)}
+
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class ShopifyThemeUpdater(View):
+
+    def post(self, request):
+        data = json.loads(request.body)
+        shop_id = data.get("shopId")
+        
+        # Initialize the Shopify theme service
+        theme_service = ShopifyThemeService(shop_id)
+
+        try:
+            theme_service.initialize_shopify_session()
+            theme_service.fetch_main_theme()
+
+            # Fetch the theme content and inject the script
+            theme_content = theme_service.fetch_theme_content()
+            return theme_service.inject_script_and_update_theme(theme_content)
+
+        except Exception as e:
+            return JsonResponse({"message": str(e)}, status=500)
+        
+
+class SliderSettingsView(APIView):
+
+    def deep_dict_compare(self,old_dict, new_dict):
+        """
+        Recursively compare two dictionaries and return a dictionary of changes.
+        """
+        changes = {}
+
+        # Iterate over all keys in the new dictionary
+        for key, new_value in new_dict.items():
+            old_value = old_dict.get(key, None)
+
+            # If the old value doesn't exist, it means the field is new
+            if old_value != new_value:
+                # If the value is a nested dictionary, recurse
+                if isinstance(new_value, dict) and isinstance(old_value, dict):
+                    nested_changes = self.deep_dict_compare(old_value, new_value)
+                    if nested_changes:  # Only include if there are changes
+                        changes[key] = nested_changes
+                else:
+                    # Otherwise, the value has changed
+                    changes[key] = {'old': old_value, 'new': new_value}
+
+        # Check if there are keys in the old dict that are missing in the new dict
+        for key, old_value in old_dict.items():
+            if key not in new_dict:
+                changes[key] = {'old': old_value, 'new': None}
+
+        return changes
+
+    
+    def post(self, request, *args, **kwargs):
+        customer_name = request.data.get('customer', None)
+        
+        
+        if not customer_name:
+            return Response({"detail": "Customer name is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Fetch the current SliderSettings instance
+        slider_settings_instance = SliderSettings.objects.filter(customer=customer_name).first()
+
+        if slider_settings_instance is None:
+            # Create a new instance if not found
+            slider_settings_instance = SliderSettings(customer=customer_name, settings=request.data.get('settings', {}))
+            created = True
+        else:
+            # Compare old settings and new settings using deep_dict_compare
+            old_settings = slider_settings_instance.settings
+            new_settings = request.data.get('settings', {})
+
+            # Get the differences
+            changes = self.deep_dict_compare(old_settings, new_settings)
+
+            if changes:
+                slider_settings_instance.settings = new_settings
+                slider_settings_instance.save()
+                print("Settings have changed:", changes)
+                created = False
+            else:
+                print("No change in settings.")
+                created = False
+
+        serializer = SliderSettingsSerializer(slider_settings_instance)
+        status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+        return Response(serializer.data, status=status_code)
+
+    def get(self, request, *args, **kwargs):
+        customer_name = request.query_params.get('customer', None)
+        
+        try:
+            if customer_name:
+                # If customer is provided, return the settings for that customer
+                slider_settings = SliderSettings.objects.get(customer=customer_name)
+                serializer = SliderSettingsSerializer(slider_settings)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            else:
+                # If no customer is provided, return all SliderSettings
+                slider_settings = SliderSettings.objects.all()
+                serializer = SliderSettingsSerializer(slider_settings, many=True)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        except SliderSettings.DoesNotExist:
+            if customer_name:
+                return Response({"detail": "Settings not found for this customer."}, status=status.HTTP_404_NOT_FOUND)
+            else:
+                return Response({"detail": "No slider settings available."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+# views.py
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.decorators import api_view
+from rest_framework.views import APIView
+from .models import DynamicComponent
+from .serializers.DynamicComponentSerializer import DynamicComponentSerializer
+
+class DynamicComponentListView(APIView):
+    
+    def get(self, request):
+        # Handle GET request to list all components
+        components = DynamicComponent.objects.all()
+        serializer = DynamicComponentSerializer(components, many=True)
+        return Response(serializer.data)
+    
+    def post(self, request):
+        # Handle POST request to create a new component
+        print(request.data)
+        serializer = DynamicComponentSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        print(serializer.errors)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+       

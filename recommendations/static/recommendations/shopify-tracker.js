@@ -1,6 +1,7 @@
 (function() {
     console.log("Tracking script loaded!");
     console.log('Logged In Customer:', window.loggedInCustomer);
+    console.log("Customer Tracking script loaded!,",window.recommendations);
 
   // Function to extract query parameters from the script's URL
   function getScriptQueryParams(scriptName) {
@@ -28,7 +29,7 @@
            // Track some activity, e.g., product view, cart addition, etc.
     function trackCustomerActivity(activityData) {
         // Your backend endpoint where you want to send the data
-        const backendUrl = 'https://b6da-2409-4062-4d8b-b24-8d86-a79f-873b-26e8.ngrok-free.app/track-activity/'; // Adjust the URL as needed
+        const backendUrl = 'https://9c19-2409-4062-2298-301b-d87b-ee32-2b5e-4bb9.ngrok-free.app/track-activity/'; // Adjust the URL as needed
 
         fetch(backendUrl, {
             method: 'POST',
@@ -44,6 +45,11 @@
         .catch(error => {
             console.error("Error tracking activity:", error);
         });
+    }
+
+    if (window.json_output || window.config_data_json) {
+        console.log(window.json_output);  // "Awesome Product"
+        console.log(window.config_data_json);         // 99.99
     }
 
      // Example: Track page view
