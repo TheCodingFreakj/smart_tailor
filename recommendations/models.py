@@ -35,6 +35,7 @@ class ProductRecommendation(models.Model):
 class SliderSettings(models.Model):
     customer = models.CharField(max_length=255, default='')
     settings = JSONField()  # Store settings as a JSON object
+    renderedhtml = models.TextField(default='')  # Store HTML content
 
     def __str__(self):
         return f"Settings for {self.customer}"

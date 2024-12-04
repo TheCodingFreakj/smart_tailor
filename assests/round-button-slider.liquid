@@ -1,0 +1,52 @@
+{% schema %}
+{
+  "name": "Round Button with Slider",
+  "settings": [
+    {
+      "type": "text",
+      "id": "button_text",
+      "label": "Button Text",
+      "default": "Open Slider"
+    },
+    {
+      "type": "textarea",
+      "id": "slider_content",
+      "label": "Slider Content",
+      "default": "Add your slider content here."
+    },
+    {
+      "type": "color",
+      "id": "button_color",
+      "label": "Button Background Color",
+      "default": "#000000"
+    },
+    {
+      "type": "color",
+      "id": "button_text_color",
+      "label": "Button Text Color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "slider_background",
+      "label": "Slider Background Color",
+      "default": "#ffffff"
+    }
+  ]
+}
+{% endschema %}
+
+
+<link rel="stylesheet" href="{{ 'round-button-slider.css' | asset_url }}">
+<div class="round-button" onclick="toggleSlider()">
+  {{ section.settings.button_text }}
+</div>
+
+<div id="sliderPanel" class="slider-panel">
+  <button class="close-button" onclick="toggleSlider()">&times;</button>
+  <div>
+    {{ section.settings.slider_content | escape }}
+  </div>
+</div>
+
+<script src="{{ 'round-button-slider.js' | asset_url }}"></script>

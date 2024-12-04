@@ -4,5 +4,5 @@ from ..models import SliderSettings
 class SliderSettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = SliderSettings
-        fields = ['customer', 'settings']
+        fields = ['customer', 'settings','renderedhtml']
 

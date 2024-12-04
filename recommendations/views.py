@@ -26,19 +26,14 @@ from sklearn.metrics.pairwise import cosine_similarity
 import certifi
 from .serializers.recommendations import SliderSettingsSerializer
 
-# Create logs directory if it doesn't exist
-log_dir = "logs"
-os.makedirs(log_dir, exist_ok=True)
 
-# Define log file path
-log_file = os.path.join(log_dir, "app.log")
 
 # Configure the logger
 logging.basicConfig(
     level=logging.DEBUG,  # Set the minimum log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",  # Log message format
     handlers=[
-        logging.FileHandler(log_file),  # Write logs to a file
+        
         logging.StreamHandler()        # Output logs to the console
     ]
 )
@@ -796,14 +791,127 @@ class TrackActivityView(APIView):
         else:
             print(f"Failed to fetch settings. Status code: {response.status_code}")
             print("Error:", response.text)
+        # create with default settings
 
-        
+        configData = {
+  "name": "Round Button with Slider",
+  "settings": [
+    {
+      "type": "text",
+      "id": "button_text",
+      "label": "Button Text",
+      "default": "Open Slider"
+    },
+    {
+      "type": "textarea",
+      "id": "slider_content",
+      "label": "Slider Content",
+      "default": "Add your slider content here."
+    },
+    {
+      "type": "color",
+      "id": "button_color",
+      "label": "Button Background Color",
+      "default": "#000000"
+    },
+    {
+      "type": "color",
+      "id": "button_text_color",
+      "label": "Button Text Color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "slider_background",
+      "label": "Slider Background Color",
+      "default": "#ffffff"
+    }
+  ]
+}
+
+
+
         app_url = f"{settings.SHOPIFY_APP_URL}/slider-settings/"
         params = {"customer": activity_data["customerId"]}
         responsesettings = requests.get(app_url,params=params)
-        print(responsesettings.json()["settings"])
-        config_data_json = json.dumps(responsesettings.json()["settings"])
-        helper.inject_script_to_theme(config_data_json, json_output)
+        print(responsesettings.json())
+        config_data_json = None
+
+        if "settings" in  responsesettings.json():
+
+            config_data_json = responsesettings.json()["settings"]
+            helper.inject_script_to_theme(config_data_json, responsesettings.json()["renderedhtml"],extracted_data,activity_data["customerId"])
+        else:
+            #create an object
+            app_url = f"{settings.SHOPIFY_APP_URL}/slider-settings/"
+            payloadFor={
+                "customer": activity_data["customerId"],
+                "settings": configData,
+                "renderedhtml":"""
+{% schema %}
+{
+  "name": "Round Button with Slider",
+  "settings": [
+    {
+      "type": "text",
+      "id": "button_text",
+      "label": "Button Text",
+      "default": "Open Slider"
+    },
+    {
+      "type": "textarea",
+      "id": "slider_content",
+      "label": "Slider Content",
+      "default": "Add your slider content here."
+    },
+    {
+      "type": "color",
+      "id": "button_color",
+      "label": "Button Background Color",
+      "default": "#000000"
+    },
+    {
+      "type": "color",
+      "id": "button_text_color",
+      "label": "Button Text Color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "slider_background",
+      "label": "Slider Background Color",
+      "default": "#ffffff"
+    }
+  ]
+}
+{% endschema %}
+
+
+<link rel="stylesheet" href="{{ 'round-button-slider.css' | asset_url }}">
+<div class="round-button" onclick="toggleSlider()">
+  {{ section.settings.button_text }}
+</div>
+
+<div id="sliderPanel" class="slider-panel">
+  <button class="close-button" onclick="toggleSlider()">&times;</button>
+  <div>
+    {{ section.settings.slider_content | escape }}
+  </div>
+</div>
+
+<script src="{{ 'round-button-slider.js' | asset_url }}"></script>
+
+
+"""
+
+            }
+            responsesettings = requests.post(app_url,json=payloadFor)
+            print(responsesettings.json())
+            helper.inject_script_to_theme(responsesettings.json()["settings"], responsesettings.json()["renderedhtml"], extracted_data,activity_data["customerId"])
+
+         
+
+        
 
 
 
@@ -973,20 +1081,7 @@ def create_fake_customer():
     # Making the POST request to Shopify's GraphQL API
     response = requests.post(GRAPHQL_URL, headers=headers, json={"query": mutation, "variables": variables})
     print(response.status_code)
-    # # Parse the response
-    # if response.status_code == 200:
-    #     data = response.json()
-
-    #     if 'errors' in data:
-    #         print("GraphQL Errors:", data['errors'])
-    #     else:
-    #         customer = data['data']['customerCreate']['customer']
-    #         print(f"Customer created with ID: {customer['id']}")
-    #         print(f"Name: {customer['firstName']} {customer['lastName']}")
-    #         print(f"Email: {customer['email']}")
-    #         print(f"Phone: {customer['phone']}")
-    # else:
-    #     print(f"Error: {response.status_code} - {response.text}")
+ 
 
 # Function to create fake product
 def create_fake_product():
@@ -1514,7 +1609,7 @@ class ShopifyThemeHelper:
         # Return the updated content with JSON data injected
         return updated_content    
                  
-    def inject_script_to_theme(self, config_data_json, json_output):
+    def inject_script_to_theme(self, config_data_json,renderedhtml,json_output, customer):
         """Injects a script to the `theme.liquid` file for a specific page."""
         try:
             theme_id = self.get_main_theme_id()
@@ -1527,21 +1622,37 @@ class ShopifyThemeHelper:
 
             
 
-            with open('assests/recommendations.css', 'r') as file:
+            with open('assests/round-button-slider.css', 'r') as file:
                file_content_css = file.read()
             css_encoded_content = file_content_css
-            with open('assests/recommendations.js', 'r') as file:
+            with open('assests/round-button-slider.js', 'r') as file:
                file_content_js = file.read()
             js_encoded_content = file_content_js
-            with open('assests/recommendationshtml.liquid', 'r') as file:
-               file_content = file.read()
-            html_encoded_content = file_content
+            html_encoded_content = None
+            if renderedhtml == '':
+                with open('assests/round-button-slider.liquid', 'r') as file:
+                    file_content = file.read()
+                    html_encoded_content = file_content
+            else:
+                app_url = f"{settings.SHOPIFY_APP_URL}/slider-settings/"
+                params = {"customer": customer}
+                responsesettings = requests.get(app_url,params=params)
+                print(responsesettings.json())
+                html_encoded_content = responsesettings.json()["renderedhtml"]
 
 
-            updated_html_content =self.inject_json_data(html_encoded_content,config_data_json, json_output)
-
+            # updated_html_content =self.inject_json_data(html_encoded_content,config_data_json, json_output)
+            print(f"updated_html_content---------->{html_encoded_content}")
             
+            app_url = f"{settings.SHOPIFY_APP_URL}/slider-settings/"
+            payloadFor={
+                "customer": customer,
+                "settings": config_data_json,
+                "renderedhtml": html_encoded_content
 
+            }
+            responsesettings = requests.post(app_url,json=payloadFor)
+            print(responsesettings.json())
 
 
             url = f"{self.base_url}/themes/{theme_id}/assets.json"
@@ -1561,32 +1672,36 @@ class ShopifyThemeHelper:
         # Check if the current config_data_json and json_output are different from the new ones
             
             print("Values have changed. Proceeding with the update.")
+
+            print("dddddddddddddddddddddddddddddddddddddddddddddddddddddddddd")
+            print(json.dumps(config_data_json, indent=4))
+            print("dddddddddddddddddddddddddddddddddddddddddddddddddddddddddd")
+            print(json.dumps(json_output, indent=4))
+
+            json_final_settings = json.dumps(config_data_json)
+            json_final_data = json.dumps(json_output)
+            print("hjgjgjghhgggggggggggggggggggggg")
+            print(config_data_json)
             
 
             # If values changed, update the theme snippet and the theme layout
             script_content = f"""
                 {{% if template != 'index' %}}
-                        {{% assign config_data_json = '{config_data_json}' %}}
-                        {{% assign json_output = '{json_output}' %}}
-
-                        {{% render 'recommendationshtml', config_data_json: config_data_json, json_output: json_output %}}
-
-                {{% endif %}}
-
-            """
+                  {{% section 'round-button-slider' %}}
+                    {{% endif %}}
+                """
             file_content = self.get_theme_liquid_content(theme_id)
             
 
             if "{% if template != 'index' %}" in response_get.json().get('asset', {}).get('value'):
                     updated_content = self.remove_recommendation_snippet(file_content)
-                    print(updated_content)
                     # Add script content just before the </body> tag
                     body_close_index = updated_content.rfind('</body>')
                     file_content = updated_content[:body_close_index] + f"\n{script_content}\n" + updated_content[body_close_index:]
 
                     
                     
-                    self.update_theme_liquid(theme_id, updated_html_content, key_url="snippets/recommendationshtml.liquid")
+                    self.update_theme_liquid(theme_id, html_encoded_content, key_url="sections/round-button-slider.liquid")
                     self.write_theme_asset(self.base_url, theme_id, 'layout/theme.liquid', file_content)
             else:
 
@@ -1594,11 +1709,11 @@ class ShopifyThemeHelper:
                     body_close_index = file_content.rfind('</body>')
                     file_content = file_content[:body_close_index] + f"\n{script_content}\n" + file_content[body_close_index:]
                     
-                    self.update_theme_liquid(theme_id, updated_html_content, key_url="snippets/recommendationshtml.liquid")
+                    self.update_theme_liquid(theme_id, html_encoded_content, key_url="sections/round-button-slider.liquid")
                     self.write_theme_asset(self.base_url, theme_id, 'layout/theme.liquid', file_content)
 
-            self.update_theme_liquid(theme_id, css_encoded_content,key_url="assets/recommendations.css")
-            self.update_theme_liquid(theme_id, js_encoded_content,key_url="assets/recommendations.js")
+            self.update_theme_liquid(theme_id, css_encoded_content,key_url="assets/round-button-slider.css")
+            self.update_theme_liquid(theme_id, js_encoded_content,key_url="assets/round-button-slider.js")
 
             
             # self.update_theme_liquid(theme_id, file_content, key_url="layout/theme.liquid")
@@ -1639,27 +1754,30 @@ class SliderSettingsView(APIView):
         """
         changes = {}
 
-        # Iterate over all keys in the new dictionary
-        for key, new_value in new_dict.items():
-            old_value = old_dict.get(key, None)
+        print(f"new_dict---------------->{new_dict}")
+        if isinstance(new_dict, dict):
+            # Iterate over all keys in the new dictionary
+            for key, new_value in new_dict.items():
+                old_value = old_dict.get(key, None)
 
-            # If the old value doesn't exist, it means the field is new
-            if old_value != new_value:
-                # If the value is a nested dictionary, recurse
-                if isinstance(new_value, dict) and isinstance(old_value, dict):
-                    nested_changes = self.deep_dict_compare(old_value, new_value)
-                    if nested_changes:  # Only include if there are changes
-                        changes[key] = nested_changes
-                else:
-                    # Otherwise, the value has changed
-                    changes[key] = {'old': old_value, 'new': new_value}
+                # If the old value doesn't exist, it means the field is new
+                if old_value != new_value:
+                    # If the value is a nested dictionary, recurse
+                    if isinstance(new_value, dict) and isinstance(old_value, dict):
+                        nested_changes = self.deep_dict_compare(old_value, new_value)
+                        if nested_changes:  # Only include if there are changes
+                            changes[key] = nested_changes
+                    else:
+                        # Otherwise, the value has changed
+                        changes[key] = {'old': old_value, 'new': new_value}
 
-        # Check if there are keys in the old dict that are missing in the new dict
-        for key, old_value in old_dict.items():
-            if key not in new_dict:
-                changes[key] = {'old': old_value, 'new': None}
+            # Check if there are keys in the old dict that are missing in the new dict
+            for key, old_value in old_dict.items():
+                if key not in new_dict:
+                    changes[key] = {'old': old_value, 'new': None}
 
-        return changes
+            return changes
+        return JsonResponse({"message": "Nor a dictionary"}, status=500)
 
     
     def post(self, request, *args, **kwargs):
@@ -1671,10 +1789,11 @@ class SliderSettingsView(APIView):
 
         # Fetch the current SliderSettings instance
         slider_settings_instance = SliderSettings.objects.filter(customer=customer_name).first()
+        print(f"slider_settings_instance------------->{slider_settings_instance}")
 
         if slider_settings_instance is None:
             # Create a new instance if not found
-            slider_settings_instance = SliderSettings(customer=customer_name, settings=request.data.get('settings', {}))
+            slider_settings_instance = SliderSettings.objects.create(customer=customer_name, settings=request.data.get('settings', {}), renderedhtml=request.data.get('renderedhtml',''))
             created = True
         else:
             # Compare old settings and new settings using deep_dict_compare

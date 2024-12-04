@@ -1,0 +1,278 @@
+[
+  {
+    "type": "text",
+    "label": "Section Title",
+    "id": "section_title",
+    "default": "Welcome to Our Store"
+  },
+  {
+    "type": "textarea",
+    "label": "Section Description",
+    "id": "section_description",
+    "default": "This is a description of the section."
+  },
+  {
+    "type": "image_picker",
+    "label": "Hero Image",
+    "id": "hero_image",
+    "default": "image_url_here"
+  },
+  {
+    "type": "url",
+    "label": "Link URL",
+    "id": "link_url",
+    "default": "https://www.example.com"
+  },
+  {
+    "type": "link",
+    "label": "Link to Collection",
+    "id": "collection_link",
+    "default": "/collections/all"
+  },
+  {
+    "type": "text",
+    "label": "Button Text",
+    "id": "button_text",
+    "default": "Shop Now"
+  },
+  {
+    "type": "url",
+    "label": "Button URL",
+    "id": "button_url",
+    "default": "/collections/all"
+  },
+  {
+    "type": "select",
+    "label": "Button Style",
+    "id": "button_style",
+    "options": [
+      { "value": "primary", "label": "Primary" },
+      { "value": "secondary", "label": "Secondary" }
+    ],
+    "default": "primary"
+  },
+  {
+    "type": "select",
+    "label": "Select Option",
+    "id": "select_option",
+    "options": [
+      { "value": "option_1", "label": "Option 1" },
+      { "value": "option_2", "label": "Option 2" }
+    ],
+    "default": "option_1"
+  },
+  {
+    "type": "checkbox",
+    "label": "Enable Feature",
+    "id": "enable_feature",
+    "default": true
+  },
+  {
+    "type": "color",
+    "label": "Background Color",
+    "id": "background_color",
+    "default": "#FFFFFF"
+  },
+  {
+    "type": "file",
+    "label": "Upload File",
+    "id": "file_upload"
+  },
+  {
+    "type": "range",
+    "label": "Image Opacity",
+    "id": "image_opacity",
+    "min": 0,
+    "max": 100,
+    "step": 1,
+    "default": 50
+  },
+  {
+    "type": "radio",
+    "label": "Display Option",
+    "id": "display_option",
+    "options": [
+      { "value": "show", "label": "Show" },
+      { "value": "hide", "label": "Hide" }
+    ],
+    "default": "show"
+  },
+  {
+    "type": "date",
+    "label": "Event Date",
+    "id": "event_date",
+    "default": "2024-12-31"
+  },
+  {
+    "type": "richtext",
+    "label": "Description",
+    "id": "rich_text_description",
+    "default": "<p>Write your description here...</p>"
+  },
+  {
+    "type": "collection",
+    "label": "Select Collection",
+    "id": "collection_picker"
+  },
+  {
+    "type": "product",
+    "label": "Select Product",
+    "id": "product_picker"
+  },
+  {
+    "type": "html",
+    "label": "Custom HTML",
+    "id": "custom_html",
+    "default": "<div class='custom-section'>Custom HTML here</div>"
+  },
+  {
+    "type": "color",
+    "label": "Background Color",
+    "id": "background_color",
+    "default": "#FFFFFF"
+  },
+  {
+    "type": "color",
+    "label": "Text Color",
+    "id": "text_color",
+    "default": "#000000"
+  },
+  {
+    "type": "text",
+    "label": "Font Size",
+    "id": "font_size",
+    "default": "16px"
+  },
+  {
+    "type": "text",
+    "label": "Font Family",
+    "id": "font_family",
+    "default": "Arial, sans-serif"
+  },
+  {
+    "type": "range",
+    "label": "Opacity",
+    "id": "opacity",
+    "min": 0,
+    "max": 100,
+    "step": 1,
+    "default": 100
+  },
+  {
+    "type": "select",
+    "label": "Text Alignment",
+    "id": "text_alignment",
+    "options": [
+      { "value": "left", "label": "Left" },
+      { "value": "center", "label": "Center" },
+      { "value": "right", "label": "Right" },
+      { "value": "justify", "label": "Justify" }
+    ],
+    "default": "left"
+  },
+  {
+    "type": "text",
+    "label": "Margin",
+    "id": "margin",
+    "default": "0"
+  },
+  {
+    "type": "text",
+    "label": "Padding",
+    "id": "padding",
+    "default": "0"
+  },
+  {
+    "type": "select",
+    "label": "Display",
+    "id": "display",
+    "options": [
+      { "value": "block", "label": "Block" },
+      { "value": "inline", "label": "Inline" },
+      { "value": "inline-block", "label": "Inline Block" },
+      { "value": "flex", "label": "Flex" },
+      { "value": "grid", "label": "Grid" },
+      { "value": "none", "label": "None" }
+    ],
+    "default": "block"
+  },
+  {
+    "type": "text",
+    "label": "Width",
+    "id": "width",
+    "default": "100%"
+  },
+  {
+    "type": "text",
+    "label": "Height",
+    "id": "height",
+    "default": "auto"
+  },
+  {
+    "type": "color",
+    "label": "Border Color",
+    "id": "border_color",
+    "default": "#CCCCCC"
+  },
+  {
+    "type": "text",
+    "label": "Border Width",
+    "id": "border_width",
+    "default": "1px"
+  },
+  {
+    "type": "text",
+    "label": "Border Radius",
+    "id": "border_radius",
+    "default": "0"
+  },
+  {
+    "type": "select",
+    "label": "Position",
+    "id": "position",
+    "options": [
+      { "value": "static", "label": "Static" },
+      { "value": "relative", "label": "Relative" },
+      { "value": "absolute", "label": "Absolute" },
+      { "value": "fixed", "label": "Fixed" },
+      { "value": "sticky", "label": "Sticky" }
+    ],
+    "default": "static"
+  },
+  {
+    "type": "text",
+    "label": "Top",
+    "id": "top",
+    "default": "0"
+  },
+  {
+    "type": "text",
+    "label": "Left",
+    "id": "left",
+    "default": "0"
+  },
+  {
+    "type": "text",
+    "label": "Right",
+    "id": "right",
+    "default": "0"
+  },
+  {
+    "type": "text",
+    "label": "Bottom",
+    "id": "bottom",
+    "default": "0"
+  },
+  {
+    "type": "select",
+    "label": "Overflow",
+    "id": "overflow",
+    "options": [
+      { "value": "visible", "label": "Visible" },
+      { "value": "hidden", "label": "Hidden" },
+      { "value": "scroll", "label": "Scroll" },
+      { "value": "auto", "label": "Auto" }
+    ],
+    "default": "visible"
+  }
+]

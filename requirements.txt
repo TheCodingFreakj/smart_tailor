@@ -15,3 +15,4 @@ joblib
 certifi
 surprise
 urllib3
+liquidpy
