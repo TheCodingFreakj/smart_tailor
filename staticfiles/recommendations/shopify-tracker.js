@@ -29,7 +29,7 @@
            // Track some activity, e.g., product view, cart addition, etc.
     function trackCustomerActivity(activityData) {
         // Your backend endpoint where you want to send the data
-        const backendUrl = 'https://9c19-2409-4062-2298-301b-d87b-ee32-2b5e-4bb9.ngrok-free.app/track-activity/'; // Adjust the URL as needed
+        const backendUrl = 'https://8f03-2409-4062-2d1b-c5b7-28a5-d207-64ab-34dd.ngrok-free.app/track-activity/'; // Adjust the URL as needed
 
         fetch(backendUrl, {
             method: 'POST',
@@ -45,6 +45,11 @@
         .catch(error => {
             console.error("Error tracking activity:", error);
         });
+    }
+
+    if (window.json_output || window.config_data_json) {
+        console.log(window.json_output);  // "Awesome Product"
+        console.log(window.config_data_json);         // 99.99
     }
 
      // Example: Track page view
