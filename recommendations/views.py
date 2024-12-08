@@ -208,10 +208,7 @@ class ProductRecommendationView(View):
 
 
 
-# @method_decorator(csrf_exempt, name='dispatch')
-# class TrackActivityView(APIView):
-#     def post(self, request, *args, **kwargs):
-#         print(request.data)
+
 
 @method_decorator(csrf_exempt, name='dispatch')
 class TrackActivityView(APIView):
@@ -1624,14 +1621,11 @@ class ShopifyThemeHelper:
             # conditional_script = script_content
 
             print("mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm")
-            with open('assests/slider-content.css', 'r') as file:
-               file_content1_css = file.read()
-            css_encoded1_content = file_content1_css
+
 
             with open('assests/slider-content.liquid', 'r') as file:
                file_content2_liq = file.read()
             html_encoded1_content = file_content2_liq
-            
 
             with open('assests/round-button-slider.css', 'r') as file:
                file_content_css = file.read()
@@ -1984,10 +1978,101 @@ class CaptureFrontendContentView(View):
             # Parse the JSON request body
             data = json.loads(request.body)
             html_content = data.get("html", "")
+            customer_name = data.get("customer", "")
+            products = ProductRecommendation.objects.filter(loggedin_customer_id=customer_name)
+            serializer = ProductRecommendationSerializer(products, many=True)
+            shop = data.get("shop", "")
+            shopMeta = ShopifyStore.objects.filter(id=shop).first()
+
+            print(shopMeta)
+
+            product_information = []
+
+            for prodId in serializer.data:
+
+                url = f"https://{shopMeta.shop_name}/admin/api/2024-10/graphql.json"
+                headers = {
+                    "Content-Type": "application/json",
+                    "X-Shopify-Access-Token": shopMeta.access_token,  # Replace with your actual access token
+                }
+
+                query = """
+    query GetProduct($id: ID!) {
+    product(id: $id) {
+        id
+        title
+        description
+        availablePublicationsCount{
+        count
+        }
+        contextualPricing(context: {country: CA}) {
+        priceRange {
+        maxVariantPrice {
+            amount
+            currencyCode
+        }
+        minVariantPrice {
+            amount
+            currencyCode
+        }
+        }
+    }
+    }
+    }
+    """
+
+                # Define the variables for the query
+                variables = {
+                    "id": prodId["product_id"]  
+                }
+
+                response = requests.post(
+                            url,
+                            headers=headers,
+                            json={"query": query, "variables": variables}
+                        )
+                product_information.append(response.json()["data"])
+
+            # Flatten the data
+            flattened_data = []
+
+            for item in product_information:
+                # Debug: Check the type of 'product'
+                if not isinstance(item, dict) or "product" not in item:
+                    print(f"Skipping item as it's invalid: {item}")
+                    continue
+
+                product = item["product"]
+
+                # Extract and flatten fields
+                flattened_data.append({
+                    "id": product.get("id", ""),
+                    "title": product.get("title", ""),
+                    "description": product.get("description", ""),
+                    "publication_count": product.get("availablePublicationsCount", {}).get("count", 0),
+                    "min_price": float(product.get("contextualPricing", {}).get("priceRange", {}).get("minVariantPrice", {}).get("amount", 0)),
+                    "max_price": float(product.get("contextualPricing", {}).get("priceRange", {}).get("maxVariantPrice", {}).get("amount", 0)),
+                    "currency": product.get("contextualPricing", {}).get("priceRange", {}).get("minVariantPrice", {}).get("currencyCode", ""),
+                })
+          
+
+            def populate_product_html(product):
+                    return html_content.replace("Default Text", product['title'])\
+                                        .replace("Default Text", product['description'] if product['description'] else 'No description available')\
+                                        .replace("0", str(product['publication_count']), 1)\
+                                        .replace("Default Value 0 - 0", f"{product['min_price']} - {product['max_price']} {product['currency']}")
+            product_template = '<div id="products-container" style="display: flex; flex-wrap: wrap; justify-content: start;">'
+            for product in flattened_data:
+                product_template += populate_product_html(product)
+
+            product_template += '</div>'
+
+            # Now `html_content` contains the full HTML code
+            print(product_template)
 
             # Save the HTML to a file
             with open("assests/slider-content.liquid", "w", encoding="utf-8") as f:
-                f.write(html_content)
+                f.write(product_template)
 
             print("HTML file generated: product_list.html")
 

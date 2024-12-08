@@ -37,9 +37,10 @@
   overflow: auto;
   transition: transform 0.3s ease;
   color: var(--button-text-color);
-  width: 80%; /* You can adjust the width to your preference */
-  max-width: 600px; /* Optional: Max width to avoid it becoming too large */
+  width: 100vw;  /* Full width of the viewport */
+  height: 100vh; /* Full height of the viewport */
 }
+
 
 .slider-panel.open {
   display: block;
