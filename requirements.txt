@@ -17,3 +17,4 @@ surprise
 urllib3
 liquidpy
 beautifulsoup4
+mlxtend

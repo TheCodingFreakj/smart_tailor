@@ -2,11 +2,12 @@ from collections import Counter, defaultdict
 import itertools
 import json
 import logging
-import os
+from mlxtend.frequent_patterns import apriori, association_rules
 import random
 import re
 from django.core import serializers
 from bs4 import BeautifulSoup
+from mlxtend.preprocessing import TransactionEncoder
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.views import View
@@ -613,39 +614,110 @@ class TrackActivityView(APIView):
 
 
         # Step 1: Extract product details
-        order_products = []
+        orders_data = []
         for order in response.json()["orders"]:
             order_number = order["order_number"]
             products = [
                 {"product_id": item["product_id"], "quantity": item["quantity"]}
                 for item in order["line_items"]
             ]
-            order_products.append({"order_number": order_number, "products": products})
+            orders_data.append({"order_number": order_number, "line_items": products})
+        print(orders_data)
 
-        # Step 2: Generate product pairs
-        pair_counts = Counter()
-        for products in order_products:
-            # Generate all unique pairs within an order
-            pairs = itertools.combinations(sorted(products), 2)
-            pair_counts.update(pairs)
+        # Step 1: Extract unique product IDs
+        product_ids = set()
+        for order in orders_data:
+            for item in order['line_items']:
+                product_ids.add(item['product_id'])
 
-        # Step 3: Output frequently bought together pairs
-        frequent_pairs = sorted(pair_counts.items(), key=lambda x: x[1], reverse=True)
+        # Step 2: Create a list of transactions (each transaction is a list of product IDs bought)
+        transactions = []
+        for order in orders_data:
+            transaction = [item['product_id'] for item in order['line_items']]
+            transactions.append(transaction)
+    
 
-        print("Frequently Bought Together:")
-        for pair, count in frequent_pairs:
-            print(f"{pair[0]} and {pair[1]} were bought together {count} times.")
+        # Convert the transaction data into the format for mlxtend
+        te = TransactionEncoder()
+        te_ary = te.fit(transactions).transform(transactions)
 
-        # Step 4: Generate recommendations for bundles
-        bundle_suggestions = defaultdict(list)
-        for (product_a, product_b), count in frequent_pairs:
-            bundle_suggestions[product_a].append((product_b, count))
+        # Convert the array to a DataFrame
+        df = pd.DataFrame(te_ary, columns=te.columns_)
 
-        print("\nSuggested Bundles:")
-        for product, suggestions in bundle_suggestions.items():
-            print(f"For {product}:")
-            for suggestion, count in suggestions:
-                print(f"  - {suggestion} (bought together {count} times)")
+
+        # Step 3: Apply the Apriori algorithm
+        # Use Apriori to find frequent itemsets with a minimum support of 0.01 (adjust as needed)
+        frequent_itemsets = apriori(df, min_support=0.005, use_colnames=True)
+
+        # Specify the total number of items in your dataset
+        num_items = len(df.columns)
+        print("Frequency Itemset:")
+        print(frequent_itemsets)
+        # Generate association rules with the 'num_itemsets' argument
+        rules = association_rules(frequent_itemsets, num_itemsets=num_items, metric="lift", min_threshold=0.1)
+        print(frequent_itemsets)
+        # Display the rules
+        print("Association Rules:")
+        print(rules.head())
+
+        # # Filter by more lenient thresholds
+        filtered_rules = rules[(rules['confidence'] >= 0.5) & (rules['lift'] >= 0.5) & (rules['support'] >= 0.1)]
+
+        print(f"Total rules before filtering: {len(rules)}")
+        print(f"Total rules after filtering: {len(filtered_rules)}")  
+
+        print(filtered_rules.head())   
+        recommended = self.recommend_products(activity_data["product_id"], filtered_rules)
+        print(f'Products recommended for {activity_data["product_id"]}: {recommended}')
+
+
+
+    def recommend_products(self, product_id, rules, min_support=0.1, min_confidence=0.5, top_n=5):
+        # Convert product_id to string to ensure uniformity
+        product_id_str = str(product_id)
+        
+        # Filter rules where the product is in either antecedents or consequents
+        relevant_rules = rules[
+            (rules['antecedents'].apply(lambda x: product_id_str in map(str, x))) |
+            (rules['consequents'].apply(lambda x: product_id_str in map(str, x)))
+        ]
+        
+        print(f"Rules with product {product_id_str} in antecedents or consequents:")
+        
+        
+        # Filter further based on minimum support and confidence
+        filtered_rules = relevant_rules[
+            (relevant_rules['support'] >= min_support) &
+            (relevant_rules['confidence'] >= min_confidence)
+        ]
+        
+        print(f"Filtered rules based on support >= {min_support} and confidence >= {min_confidence}:")
+        
+        
+        # Extract consequents for the filtered rules
+        recommendations = set()
+        for consequents in filtered_rules['consequents']:
+            recommendations.update(map(str, consequents))
+        
+        # Remove the product itself from recommendations
+        recommendations.discard(product_id_str)
+        
+        # Convert recommendations to a list and limit to top_n recommendations
+        recommendations = list(recommendations)
+        
+        # Limit the number of recommendations if needed
+        recommendations = recommendations[:top_n]
+        
+        return recommendations
+
+
+
+
+
+
+
+
+       
         
     def get_related_products_user(self,activity_data,shop,version):
 

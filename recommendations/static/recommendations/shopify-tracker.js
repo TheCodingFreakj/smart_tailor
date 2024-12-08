@@ -53,17 +53,17 @@
     }
 
      // Example: Track page view
-    //  const trackPageView = () => {
-    //     const eventData = {
-    //         customerId: window.loggedInCustomer.id || null,
-    //         event: 'page_view',
-    //         url: window.location.href,
-    //         timestamp: new Date().toISOString(),
-    //         action: "show_related_viewed_product_based_on_user",
-    //         shop:shop
-    //     };
-    //     trackCustomerActivity(eventData);
-    // };
+        //  const trackPageView = () => {
+        //     const eventData = {
+        //         customerId: window.loggedInCustomer.id || null,
+        //         event: 'page_view',
+        //         url: window.location.href,
+        //         timestamp: new Date().toISOString(),
+        //         action: "show_related_viewed_product_based_on_user",
+        //         shop:shop
+        //     };
+        //     trackCustomerActivity(eventData);
+        // };
 
 
     const getAddToCartButtons = () => {
