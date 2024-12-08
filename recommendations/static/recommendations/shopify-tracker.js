@@ -29,7 +29,7 @@
            // Track some activity, e.g., product view, cart addition, etc.
     function trackCustomerActivity(activityData) {
         // Your backend endpoint where you want to send the data
-        const backendUrl = 'https://75e2-2409-4062-2d1b-c5b7-28a5-d207-64ab-34dd.ngrok-free.app/track-activity/'; // Adjust the URL as needed
+        const backendUrl = 'https://a01f-2409-4062-2ec7-2d5b-ed57-e47f-97ec-85b1.ngrok-free.app/track-activity/'; // Adjust the URL as needed
 
         fetch(backendUrl, {
             method: 'POST',

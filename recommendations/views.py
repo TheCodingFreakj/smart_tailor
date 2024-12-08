@@ -3,9 +3,11 @@ import logging
 import os
 import random
 import re
+from bs4 import BeautifulSoup
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.views import View
+from jinja2 import Template
 import pandas as pd
 import numpy as np
 import pytz
@@ -24,7 +26,7 @@ from django.utils.decorators import method_decorator
 from smarttailor import settings
 from sklearn.metrics.pairwise import cosine_similarity
 import certifi
-from .serializers.recommendations import SliderSettingsSerializer
+from .serializers.recommendations import ProductRecommendationSerializer, SliderSettingsSerializer
 
 
 
@@ -847,7 +849,7 @@ class TrackActivityView(APIView):
             payloadFor={
                 "customer": activity_data["customerId"],
                 "settings": configData,
-                "renderedhtml":"""
+               "renderedhtml": """
 {% schema %}
 {
   "name": "Round Button with Slider",
@@ -862,7 +864,7 @@ class TrackActivityView(APIView):
       "type": "textarea",
       "id": "slider_content",
       "label": "Slider Content",
-      "default": "Add your slider content here."
+      "default": "slider-content-placeholder"
     },
     {
       "type": "color",
@@ -886,8 +888,8 @@ class TrackActivityView(APIView):
 }
 {% endschema %}
 
-
 <link rel="stylesheet" href="{{ 'round-button-slider.css' | asset_url }}">
+
 <div class="round-button" onclick="toggleSlider()">
   {{ section.settings.button_text }}
 </div>
@@ -895,13 +897,16 @@ class TrackActivityView(APIView):
 <div id="sliderPanel" class="slider-panel">
   <button class="close-button" onclick="toggleSlider()">&times;</button>
   <div>
-    {{ section.settings.slider_content | escape }}
+    <!-- Dynamically render slider content -->
+    {% if section.settings.slider_content == 'slider-content-placeholder' %}
+      {% include 'slider-content' %}
+    {% else %}
+      {{ section.settings.slider_content }}
+    {% endif %}
   </div>
 </div>
 
 <script src="{{ 'round-button-slider.js' | asset_url }}"></script>
-
-
 """
 
             }
@@ -1619,7 +1624,13 @@ class ShopifyThemeHelper:
             # conditional_script = script_content
 
             print("mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm")
+            with open('assests/slider-content.css', 'r') as file:
+               file_content1_css = file.read()
+            css_encoded1_content = file_content1_css
 
+            with open('assests/slider-content.liquid', 'r') as file:
+               file_content2_liq = file.read()
+            html_encoded1_content = file_content2_liq
             
 
             with open('assests/round-button-slider.css', 'r') as file:
@@ -1642,7 +1653,7 @@ class ShopifyThemeHelper:
 
 
             # updated_html_content =self.inject_json_data(html_encoded_content,config_data_json, json_output)
-            print(f"updated_html_content---------->{html_encoded_content}")
+            print(f"updated_html_content---------->{html_encoded1_content}")
             
             app_url = f"{settings.SHOPIFY_APP_URL}/slider-settings/"
             payloadFor={
@@ -1700,7 +1711,7 @@ class ShopifyThemeHelper:
                     file_content = updated_content[:body_close_index] + f"\n{script_content}\n" + updated_content[body_close_index:]
 
                     
-                    
+                    self.update_theme_liquid(theme_id, html_encoded1_content, key_url="snippets/slider-content.liquid")
                     self.update_theme_liquid(theme_id, html_encoded_content, key_url="sections/round-button-slider.liquid")
                     self.write_theme_asset(self.base_url, theme_id, 'layout/theme.liquid', file_content)
             else:
@@ -1708,10 +1719,12 @@ class ShopifyThemeHelper:
                 # Add script content just before the </body> tag
                     body_close_index = file_content.rfind('</body>')
                     file_content = file_content[:body_close_index] + f"\n{script_content}\n" + file_content[body_close_index:]
-                    
+                    self.update_theme_liquid(theme_id, html_encoded1_content, key_url="snippets/slider-content.liquid")
                     self.update_theme_liquid(theme_id, html_encoded_content, key_url="sections/round-button-slider.liquid")
                     self.write_theme_asset(self.base_url, theme_id, 'layout/theme.liquid', file_content)
 
+
+            # self.update_theme_liquid(theme_id, css_encoded1_content,key_url="assets/slider-content.css")
             self.update_theme_liquid(theme_id, css_encoded_content,key_url="assets/round-button-slider.css")
             self.update_theme_liquid(theme_id, js_encoded_content,key_url="assets/round-button-slider.js")
 
@@ -1745,6 +1758,99 @@ class ShopifyThemeUpdater(View):
         except Exception as e:
             return JsonResponse({"message": str(e)}, status=500)
         
+class ProductsData(APIView):
+    def get(self, request, *args, **kwargs):
+        customer_name = request.query_params.get('customer', None)
+        products = ProductRecommendation.objects.filter(loggedin_customer_id=customer_name)
+        serializer = ProductRecommendationSerializer(products, many=True)
+        shop = request.query_params.get("shop",'')
+        shopMeta = ShopifyStore.objects.filter(id=shop).first()
+
+        print(shopMeta)
+
+        product_information = []
+
+        for prodId in serializer.data:
+
+            url = f"https://{shopMeta.shop_name}/admin/api/2024-10/graphql.json"
+            headers = {
+                "Content-Type": "application/json",
+                "X-Shopify-Access-Token": shopMeta.access_token,  # Replace with your actual access token
+            }
+
+            query = """
+query GetProduct($id: ID!) {
+product(id: $id) {
+    id
+    title
+    description
+    availablePublicationsCount{
+    count
+    }
+    contextualPricing(context: {country: CA}) {
+    priceRange {
+    maxVariantPrice {
+        amount
+        currencyCode
+    }
+    minVariantPrice {
+        amount
+        currencyCode
+    }
+    }
+}
+}
+}
+"""
+
+            # Define the variables for the query
+            variables = {
+                "id": prodId["product_id"]  
+            }
+
+            response = requests.post(
+                        url,
+                        headers=headers,
+                        json={"query": query, "variables": variables}
+                    )
+            product_information.append(response.json()["data"])
+
+        # Flatten the data
+        flattened_data = []
+
+        for item in product_information:
+            # Debug: Check the type of 'product'
+            if not isinstance(item, dict) or "product" not in item:
+                print(f"Skipping item as it's invalid: {item}")
+                continue
+
+            product = item["product"]
+
+            # Extract and flatten fields
+            flattened_data.append({
+                "id": product.get("id", ""),
+                "title": product.get("title", ""),
+                "description": product.get("description", ""),
+                "publication_count": product.get("availablePublicationsCount", {}).get("count", 0),
+                "min_price": float(product.get("contextualPricing", {}).get("priceRange", {}).get("minVariantPrice", {}).get("amount", 0)),
+                "max_price": float(product.get("contextualPricing", {}).get("priceRange", {}).get("maxVariantPrice", {}).get("amount", 0)),
+                "currency": product.get("contextualPricing", {}).get("priceRange", {}).get("minVariantPrice", {}).get("currencyCode", ""),
+            })
+        # Print the flattened data
+        print(flattened_data)
+        keys = flattened_data[0].keys()
+        # Define defaults dynamically based on key names
+        keys_dict = {
+            key: (
+                "Default Text" if "title" in key or "description" in key else
+                0 if "count" in key or "price" in key else
+                "Default Value"
+            )
+            for key in keys
+        }
+
+        print(keys_dict)
+        return Response(keys_dict, status=status.HTTP_200_OK)
 
 class SliderSettingsView(APIView):
 
@@ -1823,7 +1929,10 @@ class SliderSettingsView(APIView):
             if customer_name:
                 # If customer is provided, return the settings for that customer
                 slider_settings = SliderSettings.objects.get(customer=customer_name)
+                
                 serializer = SliderSettingsSerializer(slider_settings)
+              
+
                 return Response(serializer.data, status=status.HTTP_200_OK)
             else:
                 # If no customer is provided, return all SliderSettings
@@ -1865,4 +1974,42 @@ class DynamicComponentListView(APIView):
         print(serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-       
+
+
+@method_decorator(csrf_exempt, name='dispatch')    
+class CaptureFrontendContentView(View):
+    
+    def post(self, request):
+        try:
+            # Parse the JSON request body
+            data = json.loads(request.body)
+            html_content = data.get("html", "")
+
+            # Save the HTML to a file
+            with open("assests/slider-content.liquid", "w", encoding="utf-8") as f:
+                f.write(html_content)
+
+            print("HTML file generated: product_list.html")
+
+            return JsonResponse({"message": "Content saved successfully!"}, status=201)
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON data."}, status=400)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)    
+from liquid import Liquid
+
+class ShopifyRenderView:
+    def render_to_response(self, context):
+        # Load the Liquid template content
+        with open('assests/slider-content.liquid', 'r') as file:
+            template_content = file.read()
+
+        # Initialize the Liquid template engine
+        liquid = Liquid(template=template_content)
+
+        # Render the template with the context
+        rendered_html = liquid.render( context)
+
+        print(rendered_html)
+
+   

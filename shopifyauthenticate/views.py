@@ -83,7 +83,7 @@ class ShopifyInstallView(View):
         api_key = settings.SHOPIFY_API_KEY
         redirect_uri = f"{settings.SHOPIFY_APP_URL}/shopify/callback/"
         # write_themes_assets
-        scopes = "read_products,write_products,read_orders,write_orders,read_script_tags,write_script_tags,read_customers,write_customers,read_themes,write_themes,read_customers,write_customers"
+        scopes = "read_products,write_products,read_orders,write_orders,read_publications,read_draft_orders,read_script_tags,write_script_tags,read_customers,write_customers,read_themes,write_themes,read_customers,write_customers"
         # Create a session token (it could be a random UUID or something more specific)
         session_token = str(uuid.uuid4())
         request.session['shopify_oauth_session_token'] = session_token
