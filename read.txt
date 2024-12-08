@@ -75,8 +75,7 @@ Multichannel Integration: Extend recommendations to social media and advertising
 Mobile App Support: Allow merchants to manage and view analytics through a mobile app.
 Partner Ecosystem: Integrate with other popular apps (e.g., email marketing tools like Klaviyo).
 
- Personalized Product Recommendations
-Dynamic Recommendations: Suggest products based on customer behavior, browsing history, and purchase patterns.
+Personalized Product Recommendations
 Cross-Selling: Recommend complementary products (e.g., "Customers also bought").
 Upselling Bundles: Offer product bundles (e.g., "Frequently Bought Together").
 Real-Time Updates: Ensure recommendations are updated dynamically as customers interact with the store.

@@ -1,8 +1,11 @@
+from collections import Counter, defaultdict
+import itertools
 import json
 import logging
 import os
 import random
 import re
+from django.core import serializers
 from bs4 import BeautifulSoup
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect
@@ -206,390 +209,139 @@ class ProductRecommendationView(View):
 
 
 
-
-
-
-
-@method_decorator(csrf_exempt, name='dispatch')
-class TrackActivityView(APIView):
-    def post(self, request, *args, **kwargs):
-        # Extract activity data from the request
-        activity_data = request.data
-        shop = activity_data["shop"]
-
-        
-        # self.upload_app_block_to_theme(shop,'2024-10')
-        print("Checkin")
-        
-
-        
-        print("Received activity data:", request.data)
-
-        if activity_data:
-            shop_name = activity_data["shop"]
-            customerId = activity_data["customerId"] or 1
-
-            shop = ShopifyStore.objects.filter(shop_name=shop_name).first()
-            api_version = '2024-10'
-            self.install_customer_tracking_script(shop.shop_name, shop.access_token)
-            # 2024-10
-            
-            
-
-            UserActivity.objects.create(
-                product_url=activity_data["url"] if "url" in activity_data else 'NA',
-                user_id=customerId,
-                product_id=activity_data["product_id"] if "product_id" in activity_data else 'NA' ,
-                action_type=activity_data["action"],
-            )
-
-            if activity_data["action"] == "show_related_viewed_product_based_on_user":
-                self.get_related_products_user(activity_data, shop,api_version)
-            elif(activity_data["action"] == "show_related_product_based_on_category"):
-                self.fetch_shopify_product_category(activity_data["product_id"], shop,api_version)
-        return JsonResponse({"message": "Activity tracked successfully"}, status=status.HTTP_200_OK)
-
-
-#     def fetch_shopify_product_category(self,product_id, shop,api_version):
-#         # # GraphQL endpoint URL for Shopify API
-#         # url = f"https://{shop.shop_name}/admin/api/{api_version}/graphql.json"
-
-#         # # Headers for the request
-#         # headers = {
-#         #     "Content-Type": "application/json",
-#         #     "X-Shopify-Access-Token": shop.access_token
-#         # }
-
-#         #         # GraphQL query
-#         # query = """
-#         # {
-#         # newestProducts: products(first: 5, reverse: true) {
-#         #     edges {
-#         #     node {
-#         #         id
-#         #         title
-#         #         category{
-#         #            name
-                
-#         #         }
-#         #     }
-#         #     }
-#         # }
-#         # oldestProducts: products(first: 5) {
-#         #     edges {
-#         #     node {
-#         #         id
-#         #         title
-#         #         category{
-#         #            name
-                
-#         #         }
-#         #     }
-#         #     }
-#         # }
-#         # }
-#         # """
-
-#         # # Data to send in the request
-#         # data = {
-#         #     "query": query
-#         # }
-
-
-#         data =  {
-#   "data": {
-#     "newestProducts": {
-#       "edges": [
-#         {
-#           "node": {
-#             "id": "gid://shopify/Product/8942110638335",
-#             "title": "ew",
-#             "category": {
-#               "name": "Business & Productivity Software"
-#             }
-#           }
-#         },
-#         {
-#           "node": {
-#             "id": "gid://shopify/Product/8942110376191",
-#             "title": "p1",
-#             "category": {
-#               "name": "Educational Software"
-#             }
-#           }
-#         }
-#       ]
-#     },
-#     "oldestProducts": {
-#       "edges": [
-#         {
-#           "node": {
-#             "id": "gid://shopify/Product/8942110376191",
-#             "title": "p1",
-#             "category": {
-#               "name": "Educational Software"
-#             }
-#           }
-#         },
-#         {
-#           "node": {
-#             "id": "gid://shopify/Product/8942110638335",
-#             "title": "ew",
-#             "category": {
-#               "name": "Business & Productivity Software"
-#             }
-#           }
-#         }
-#       ]
-#     }
-#   },
-#   "extensions": {
-#     "cost": {
-#       "requestedQueryCost": 16,
-#       "actualQueryCost": 8,
-#       "throttleStatus": {
-#         "maximumAvailable": 2000.0,
-#         "currentlyAvailable": 1992,
-#         "restoreRate": 100.0
-#       }
-#     }
-#   }
-# }
-
-
-
-
-
-
-#         # Extracting product information (id, title, and category) from newestProducts and oldestProducts
-#         newest_products = [product['node'] for product in data['data']['newestProducts']['edges']]
-#         oldest_products = [product['node'] for product in data['data']['oldestProducts']['edges']]
-
-#         # Combine all products into a single list
-#         all_products = newest_products + oldest_products
-
-#         # Transform the data into the desired format
-#         formatted_products = [{"id": product["id"].split('/')[-1], "title": product["title"], "category": product["category"]["name"]} for product in all_products]
-
-#         # Display the formatted products
-#         print(formatted_products)
-
-
-#         # Initialize an empty dictionary to store product IDs and related products
-#         products_db = {}
-#         all_categories = []
-
-#         # Iterate over the products to populate the database with related products
-#         for product in formatted_products:
-#             product_id = product['id']
-#             product_title = product['title']
-#             product_category = product['category'].lower().strip()
-#             all_categories.append(product_category)
-            
-#             # Initialize related products list for each product
-#             related_products = []
-#             # Find related products by matching categories (exact match or contains)
-#             for related_product in formatted_products:
-
-#                 related_product_category = related_product['category'].lower().strip()
-#                 if product_id != related_product['id']:
-
-#                     if(related_product_category in all_categories ):
-#                         if related_product['id'] not in related_products:
-#                            related_products.append(related_product['id'])
-                    
-    
-
-            
-#             # Populate the products_db dictionary with product details and its related products
-#             products_db[product_id] = related_products
-#         print(products_db)
-
-#        # Iterate through the dictionary and store values in the database
-#         for product_id, related_product_ids in products_db.items():
-#             # Create a ProductRelationship record for each product with its related products
-#             ProductRelationship.objects.create(
-#                 product_id=product_id,
-#                 related_product_ids=related_product_ids
-#             )
-
-
-
-            
-
-            
-        # Send POST request to Shopify API
-        # response = requests.post(url, headers=headers, json=data,verify=certifi.where())
-
-        # # Check if the request was successful
-        # if response.status_code == 200:
-        #     response_data = response.json()
-        #     print(json.dumps(response_data, indent=2))  # Pretty print the response
-        # else:
-        #     print(f"Error: {response.status_code}, {response.text}")
-        # Calculate the date for one week ago
-        
-    def get_related_products_user(self,activity_data,shop,version):
-
-
-        # get all enabled account customers
-        query = """ {
-        customers(first: 10) {
-    edges {
-      node {
-        id
-        state
-      }
-    }
-  }
-        }
-
-# """
-
-
-        headers = {
+class ShopifyDataFetcher:
+    def __init__(self, shop, version, activity_data):
+        self.shop = shop
+        self.version = version
+        self.activity_data = activity_data
+        self.base_url = f"https://{shop.shop_name}/admin/api/{version}/graphql.json"
+        self.headers = {
             "Content-Type": "application/json",
             "X-Shopify-Access-Token": shop.access_token
         }
 
-                # # Prepare the payload
-        payload = {
-            "query": query,
-           
-        }
-
-        # Make the POST request to the Shopify API
-        response = requests.post(f"https://{shop.shop_name}/admin/api/{version}/graphql.json", headers=headers, data=json.dumps(payload),verify=certifi.where())
-       
-
-
-        customer_all = response.json()
+    def execute_graphql_query(self, query, variables=None):
+        """Helper function to make the GraphQL API request."""
+        payload = {"query": query}
+        if variables:
+            payload["variables"] = variables
+        response = requests.post(self.base_url, headers=self.headers, data=json.dumps(payload), verify=certifi.where())
         
-        # Extract the customers array
-        customers = [edge['node'] for edge in customer_all['data']['customers']['edges']]
-        # Extract only the numeric part of the IDs
+        if response.status_code != 200:
+            logger.error(f"GraphQL request failed with status code {response.status_code}")
+            return None
+        
+        return response.json()
+
+    def get_all_customers(self):
+        """Fetch all enabled customers."""
+        query = """
+        {
+            customers(first: 10) {
+                edges {
+                    node {
+                        id
+                        state
+                    }
+                }
+            }
+        }
+        """
+        customer_data = self.execute_graphql_query(query)
+        if not customer_data:
+            return []
+
+        # Extract numeric customer IDs
+        customers = [edge['node'] for edge in customer_data['data']['customers']['edges']]
         numeric_ids = [re.search(r'\d+', customer['id']).group() for customer in customers]
+        return numeric_ids
 
+    def get_customer_orders(self, customer_ids):
+        """Fetch all orders related to the given customer IDs."""
         all_customer_interactions = []
-
-        for idx in numeric_ids:
+        
+        for customer_id in customer_ids:
             query = f"""
             {{
-            orders(first: 10, query: "{f'customer_id:{idx}'}") {{
-                edges {{
-                node {{
-                    id
-                    updatedAt
-                    customer{{
-                    id
-                    }}
-                    customerJourney{{
-                        customerOrderIndex
-                        daysToConversion
-                        firstVisit{{
-                        source
+                orders(first: 10, query: "customer_id:{customer_id}") {{
+                    edges {{
+                        node {{
+                            id
+                            updatedAt
+                            customer {{
+                                id
+                            }}
+                            customerJourney {{
+                                customerOrderIndex
+                                daysToConversion
+                                firstVisit {{
+                                    source
+                                }}
+                                moments {{
+                                    occurredAt
+                                }}
+                                lastVisit {{
+                                    source
+                                }}
+                            }}
+                            lineItems(first:5) {{
+                                edges {{
+                                    node {{
+                                        name
+                                        quantity
+                                        product {{
+                                            id
+                                            category {{
+                                                name
+                                            }}
+                                            title
+                                            variants(first: 5) {{
+                                                nodes {{
+                                                    displayName
+                                                    price
+                                                }}
+                                            }}
+                                        }}
+                                    }}
+                                }}
+                            }}
                         }}
-                        moments{{
-                        occurredAt
-                        }}
-                        lastVisit{{
-                        source
-                        }}
-                    }}
-                    
-                    lineItems(first:5){{
-                    edges{{
-                    node{{
-                    name
-                    quantity
-                    product{{
-                    id
-                    category{{
-                    name
-                    }}
-                    title
-                    variants(first: 5){{
-                    nodes{{
-                    displayName
-                    price
-                    
-                    }}
-                    }}
-                    }}
-                    }}
-                    }}
                     }}
                 }}
-                }}
-            }}
             }}
             """
-
-            # Prepare the headers
-            headers = {
-                "Content-Type": "application/json",
-                "X-Shopify-Access-Token": shop.access_token
-            }
-
-            # Prepare the payload
-            payload = {
-                "query": query,
-            
-            }
-
-            # Make the POST request to the Shopify API
-            response = requests.post(f"https://{shop.shop_name}/admin/api/{version}/graphql.json", headers=headers, data=json.dumps(payload),verify=certifi.where())
-            all_customer_interactions.append(response.json())
-            logger.error(f"all_customer_interactions---->{all_customer_interactions}")
+            customer_interaction_data = self.execute_graphql_query(query)
+            if customer_interaction_data:
+                all_customer_interactions.append(customer_interaction_data)
         
+        return all_customer_interactions
 
-
-
-        # Define the GraphQL query
+    def get_all_products(self):
+        """Fetch all products in the store."""
         query = """
         query {
-  products(first: 10, reverse: true) {
-    edges {
-      node {
-        id
-        title
-      }
-    }
-  }
-  }
-        """
-
-        # Define the headers (if any authorization token is needed, for example)
-        headers = {
-            'Content-Type': 'application/json',
-            "X-Shopify-Access-Token": shop.access_token  # Replace with your actual token
+            products(first: 10, reverse: true) {
+                edges {
+                    node {
+                        id
+                        title
+                    }
+                }
+            }
         }
-
-        # Make the POST request to the GraphQL endpoint
-        response = requests.post(f"https://{shop.shop_name}/admin/api/{version}/graphql.json", json={'query': query}, headers=headers)
-        # Check the status code and print the response
-        if response.status_code == 200:
-            data = response.json()  # Parse the response JSON data
-            # Pretty print the data (if needed)
-
-            # print(json.dumps(data, indent=2))  # Print the JSON response in a readable format
-        else:
-            print(f"Failed to fetch data: {response.status_code}")
-
-        response_data = response.json()
-
+        """
+        product_data = self.execute_graphql_query(query)
+        if not product_data:
+            return []
         
-        # Extracting product titles
-        all_products_in_store = [product['node']['title'] for product in response_data['data']['products']['edges']]
+        return [product['node']['title'] for product in product_data['data']['products']['edges']]
 
-        # Print the result
-
+    def process_customer_data(self, customer_interactions):
+        """Process and normalize customer interaction data."""
         customer_data = []
-        for data in all_customer_interactions:
-            # Initialize an empty list to store the extracted data
-            orders = data.get("data", {}).get("orders", {}).get("edges", [])
-            
 
+        for data in customer_interactions:
+            orders = data.get("data", {}).get("orders", {}).get("edges", [])
             for order in orders:
                 node = order.get("node", {})
                 customer_journey = node.get("customerJourney") if node.get("customerJourney") is not None else {}
@@ -618,14 +370,11 @@ class TrackActivityView(APIView):
                     product_data = item.get("node", {})
                     product = product_data.get("product", {})
                     variants = product.get("variants", {}).get("nodes", [])
-                    print(f"product------------------------------------------------------")
-                    print(product["id"])
-                    print(f"product------------------------------------------------------")
-
+                    
                     customer_data.append({
-                        "customer_id": node.get("customer", {}).get("id"),
+                         "customer_id": node.get("customer", {}).get("id"),
                         "product_id": product["id"],
-                        "logged_in_customer": activity_data["customerId"],
+                        "logged_in_customer": self.activity_data["customerId"],
                         "product_name": product_data.get("name", "Unknown Product"),
                         "quantity": product_data.get("quantity") if product.get("quantity") else None,
                         "category": product["category"]["name"] if product.get("category") and "name" in product["category"] else None,
@@ -640,72 +389,77 @@ class TrackActivityView(APIView):
                         "moments": moments,
                         "order_updated_at": node.get("updatedAt"),
                     })
+        return customer_data
 
+    def analyze_data(self, customer_data):
+        """Analyze the customer data to calculate relevant metrics."""
+        df = pd.json_normalize(customer_data, record_path=['moments'], meta=[
+            'customer_id', 'logged_in_customer', 'product_name', 'product_id', 'quantity', 
+            'category', 'variants', 'order_index', 'days_to_conversion', 'first_visit_source', 
+            'last_visit_source', 'order_updated_at'
+        ])
 
-        logger.debug(f"This is a debug customer_data-->{customer_data}")
-                # Convert data to DataFrame
-        df = pd.json_normalize(customer_data, record_path=['moments'], meta=['customer_id', 'logged_in_customer','product_name', 'product_id', 'quantity', 'category', 'variants', 'order_index', 'days_to_conversion', 'first_visit_source', 'last_visit_source', 'order_updated_at'])
-
-        # Convert 'occurredAt' to datetime
+        # Convert 'occurredAt' to datetime and handle empty variants
         df['occurredAt'] = pd.to_datetime(df['occurredAt'])
-
-        # Expand 'variants' to include price and displayName
         df['product_price'] = df['variants'].apply(lambda x: float(x[0]['price']) if x else None)
         df['product_displayName'] = df['variants'].apply(lambda x: x[0]['displayName'] if x else None)
 
-
-
         now_utc = datetime.now(pytz.utc)
-        # Calculate the days since the last purchase
         df['days_since_last_purchase'] = (now_utc - df['occurredAt']).dt.days
         df['quantity'] = df['quantity'].apply(lambda x: x if x is not None else 1)
 
         # Total quantity purchased per product
         product_purchase_quantity = df.groupby('product_name')['quantity'].sum()
 
-        
-
         # Total revenue per product
-        
         df['total_revenue'] = df["quantity"] * df['product_price']
-        # print(tabulate(df, headers='keys', tablefmt='pretty', showindex=False))
-        
         product_revenue = df.groupby('product_name')['total_revenue'].sum()
-        logger.debug(f"This is a debug product_purchase_quantity-->{product_purchase_quantity}")
-        logger.debug(f"This is a debug product_revenue-->{product_revenue}")
-
-        logger.debug(f"df['quantity']-------->{df['quantity']}")
-      
-
 
         # Total spend per customer
         df['total_spent'] = df['quantity'] * df['product_price']
         customer_total_spent = df.groupby('customer_id')['total_spent'].sum()
 
-        # Sort by total spend
+        # Sort by total spend to find high-value customers
         high_value_customers = customer_total_spent.sort_values(ascending=False)
-     
-        logger.debug(f"This is a debug high_value_customers.head()==>{high_value_customers.head()}")
-        from sklearn.metrics.pairwise import cosine_similarity
-        import numpy as np
 
-        # Pivot table with customers as rows and products as columns
+        # Log analysis results
+        logger.debug(f"High-value customers: {high_value_customers}")
+        logger.debug(f"Product purchase quantities: {product_purchase_quantity}")
+        logger.debug(f"Product revenue: {product_revenue}")
+
+        return high_value_customers, product_purchase_quantity, product_revenue, df
+
+    def get_related_products_user(self):
+        """Main function to fetch data and analyze customer interactions."""
+        customer_ids = self.get_all_customers()
+        all_customer_interactions = self.get_customer_orders(customer_ids)
+        customer_data = self.process_customer_data(all_customer_interactions)
+        high_value_customers, product_purchase_quantity, product_revenue,df = self.analyze_data(customer_data)
+        self.recommend_products_based_on_similarity(df, high_value_customers)
+        
+        
+    
+    def recommend_products_based_on_similarity(self,df, high_value_customers):
+        """
+        Function to recommend products based on the cosine similarity of customers' purchasing behavior.
+        """
+        # Create a pivot table with customers as rows and products as columns
         pivot_table = df.pivot_table(index='customer_id', columns='product_name', values='quantity', aggfunc='sum', fill_value=0)
 
         # Calculate cosine similarity between customers
         cosine_sim = cosine_similarity(pivot_table)
 
-        # Example: Find most similar customers to customer at index 0 (first customer)
-        target_customer_idx = 0  # Customer at index 0
+        # Example: Find most similar customers to the first high-value customer
+        target_customer_idx = 0  # Use the top high-value customer as target
         similar_customers = cosine_sim[target_customer_idx]
 
-        # Create a DataFrame with the similarity scores and customer IDs
+        # Create a DataFrame with similarity scores and customer IDs
         similarity_df = pd.DataFrame({
             'customer_id': pivot_table.index,
             'similarity_score': similar_customers
         })
 
-        # Exclude the self-similarity (1.0 score)
+        # Exclude self-similarity (1.0 score)
         similarity_df = similarity_df[similarity_df['customer_id'] != pivot_table.index[target_customer_idx]]
 
         # Sort by similarity score (descending)
@@ -713,47 +467,45 @@ class TrackActivityView(APIView):
 
         # Display the top N similar customers (e.g., top 5)
         top_similar_customers = similarity_df_sorted.head(5)
-
-        logger.debug(f"This is a debug top_similar_customers-->{top_similar_customers}")
-
+        logger.debug(f"Top similar customers: {top_similar_customers}")
 
         # Get products purchased by these similar customers
         similar_customers_ids = top_similar_customers['customer_id'].tolist()
         recommended_products = df[df['customer_id'].isin(similar_customers_ids)]
 
-        # Recommend top N products (you could choose to recommend the most purchased ones)
-        recommended_products = df.groupby('product_name').agg(
-                product_id=('product_id', 'first'),
-                quantity=('quantity', 'sum'),
-                customer_id=('customer_id', 'first'),
-                loggedin_customer = ('logged_in_customer', 'first')
-            ).sort_values('quantity', ascending=False)
+        # Recommend top N products (e.g., most purchased)
+        recommended_products = recommended_products.groupby('product_name').agg(
+            product_id=('product_id', 'first'),
+            quantity=('quantity', 'sum'),
+            customer_id=('customer_id', 'first'),
+            loggedin_customer=('logged_in_customer', 'first')
+        ).sort_values('quantity', ascending=False)
 
+        logger.debug(f"Recommended products: {recommended_products.head()}")
 
-        logger.debug(f"recommended_products.head(): {recommended_products.head()}")
-
-        # Assuming 'recommended_products' is your DataFrame
+        # Extract top recommended product names
         product_names = recommended_products.head().index.tolist()
 
-        # Print the dynamically created product_names array
-        print(product_names)
-
-        # Assuming the product names are dynamically passed or updated in the index
+        # Assuming 'recommended_products' is your DataFrame
         recommended_products = pd.DataFrame(recommended_products.head(), index=product_names)
 
-
-        from django.core import serializers
+        # Store recommendations to the database (this would depend on your model logic)
         self.store_recommendations_from_df(recommended_products)
-        recommendations = ProductRecommendation.objects.filter(loggedin_customer_id=activity_data["customerId"]).order_by('-recommendation_score')
+
+        # Retrieve recommendations from the database for the logged-in customer
+        recommendations = ProductRecommendation.objects.filter(
+            loggedin_customer_id=self.activity_data["customerId"]
+        ).order_by('-recommendation_score')
+
         # Serialize the queryset
         recommendations_json = serializers.serialize('json', recommendations)
 
         # This is the JSON you can pass to the frontend
-        print(recommendations_json)
+        logger.debug(f"Serialized recommendations: {recommendations_json}")
+
+        # Parse the serialized JSON and extract relevant data
         extracted_data = []
-        # The recommendations_json is a list of dictionaries (already deserialized)
         for entry in json.loads(recommendations_json):  # Parse the JSON string to Python objects
-            # Ensure entry contains the 'fields' key
             if 'fields' in entry:
                 fields = entry['fields']
                 extracted_data.append({
@@ -766,11 +518,139 @@ class TrackActivityView(APIView):
                     "loggedin_customer_id": fields["loggedin_customer_id"]
                 })
             else:
-                print(f"Invalid entry format: {entry}")
+                logger.warning(f"Invalid entry format: {entry}")
 
         # Convert the extracted data to JSON
-        json_output = json.dumps(extracted_data)
+        json_output = extracted_data
+        logger.debug(f"Extracted recommendation data: {json_output}")
 
+        return json_output
+    def store_recommendations_from_df(self,df):
+        """
+        Processes the DataFrame and stores or updates product recommendations in the database.
+        
+        :param df: A pandas DataFrame containing product recommendation data
+        """
+        for product_name,  row in df.iterrows():
+            product_id = row['product_id']
+            recommendation_score = row['quantity']
+            customer_id = row['customer_id']
+            loggedin_customer_id = row['loggedin_customer']
+            
+            
+            try:
+                # Try to get the existing recommendation
+                recommendation = ProductRecommendation.objects.get(product_id=product_id)
+                # Update the recommendation score if it exists
+                recommendation.recommendation_score = recommendation_score
+                recommendation.customer_id = customer_id
+                recommendation.loggedin_customer_id = loggedin_customer_id
+                recommendation.product_name = product_name  # Optionally update the product name
+                recommendation.save()
+                print(f"Updated recommendation for {product_name} ({product_id}) with score {recommendation_score}")
+            except ProductRecommendation.DoesNotExist:
+                # If the recommendation doesn't exist, create a new record
+                recommendation = ProductRecommendation.objects.create(
+                    product_id=product_id,
+                    product_name=product_name,
+                    recommendation_score=recommendation_score,
+                    customer_id=customer_id,
+                    loggedin_customer_id = loggedin_customer_id
+                )
+                print(f"Created new recommendation for {product_name} ({product_id}) with score {recommendation_score}")
+
+
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class TrackActivityView(APIView):
+    def post(self, request, *args, **kwargs):
+        # Extract activity data from the request
+        activity_data = request.data
+        
+        # self.upload_app_block_to_theme(shop,'2024-10')
+        print("Checkin")
+        
+
+        
+        print("Received activity data:", request.data)
+
+        if activity_data:
+            shop_name = activity_data["shop"]
+            customerId = activity_data["customerId"] or 1
+
+            shop = ShopifyStore.objects.filter(shop_name=shop_name).first()
+            api_version = '2024-10'
+            self.install_customer_tracking_script(shop.shop_name, shop.access_token)
+            # 2024-10
+            
+            
+
+            UserActivity.objects.create(
+                product_url=activity_data["url"] if "url" in activity_data else 'NA',
+                user_id=customerId,
+                product_id=activity_data["product_id"] if "product_id" in activity_data else 'NA' ,
+                action_type=activity_data["action"],
+            )
+
+            if activity_data["action"] == "show_related_viewed_product_based_on_user":
+                self.get_related_products_user(activity_data, shop,api_version)
+            elif(activity_data["action"] == "show_related_product_based_on_often_bought"):
+                self.fetch_often_bought_together(activity_data, shop,api_version)
+        return JsonResponse({"message": "Activity tracked successfully"}, status=status.HTTP_200_OK)
+
+
+    def fetch_often_bought_together(self,activity_data, shop,api_version):
+        params = {
+            "customer_id": activity_data["customerId"]
+        }
+        url = f"https://{shop.shop_name}/admin/api/{api_version}/orders.json"
+        headers = {
+            "X-Shopify-Access-Token": shop.access_token,
+            "Content-Type": "application/json"
+        }
+        response = requests.get(url, headers=headers, params=params)
+
+
+        # Step 1: Extract product details
+        order_products = []
+        for order in response.json()["orders"]:
+            order_number = order["order_number"]
+            products = [
+                {"product_id": item["product_id"], "quantity": item["quantity"]}
+                for item in order["line_items"]
+            ]
+            order_products.append({"order_number": order_number, "products": products})
+
+        # Step 2: Generate product pairs
+        pair_counts = Counter()
+        for products in order_products:
+            # Generate all unique pairs within an order
+            pairs = itertools.combinations(sorted(products), 2)
+            pair_counts.update(pairs)
+
+        # Step 3: Output frequently bought together pairs
+        frequent_pairs = sorted(pair_counts.items(), key=lambda x: x[1], reverse=True)
+
+        print("Frequently Bought Together:")
+        for pair, count in frequent_pairs:
+            print(f"{pair[0]} and {pair[1]} were bought together {count} times.")
+
+        # Step 4: Generate recommendations for bundles
+        bundle_suggestions = defaultdict(list)
+        for (product_a, product_b), count in frequent_pairs:
+            bundle_suggestions[product_a].append((product_b, count))
+
+        print("\nSuggested Bundles:")
+        for product, suggestions in bundle_suggestions.items():
+            print(f"For {product}:")
+            for suggestion, count in suggestions:
+                print(f"  - {suggestion} (bought together {count} times)")
+        
+    def get_related_products_user(self,activity_data,shop,version):
+
+        json_output = ShopifyDataFetcher(shop,version,activity_data).get_related_products_user()
+    
         # Print the result
         print(f"json_output.................>{json_output}")
         helper = ShopifyThemeHelper(shop)
@@ -778,6 +658,10 @@ class TrackActivityView(APIView):
         print("helper...........................................")
 
         url = f"{settings.SHOPIFY_APP_URL}/slider-settings/"  # Adjust the URL as per your API
+        headers = {
+            "Content-Type": "application/json",
+            "X-Shopify-Access-Token": shop.access_token
+        }
 
 
         response = requests.get(url, headers=headers)
@@ -839,7 +723,7 @@ class TrackActivityView(APIView):
         if "settings" in  responsesettings.json():
 
             config_data_json = responsesettings.json()["settings"]
-            helper.inject_script_to_theme(config_data_json, responsesettings.json()["renderedhtml"],extracted_data,activity_data["customerId"])
+            helper.inject_script_to_theme(config_data_json, responsesettings.json()["renderedhtml"],json_output,activity_data["customerId"])
         else:
             #create an object
             app_url = f"{settings.SHOPIFY_APP_URL}/slider-settings/"
@@ -909,53 +793,9 @@ class TrackActivityView(APIView):
             }
             responsesettings = requests.post(app_url,json=payloadFor)
             print(responsesettings.json())
-            helper.inject_script_to_theme(responsesettings.json()["settings"], responsesettings.json()["renderedhtml"], extracted_data,activity_data["customerId"])
-
-         
-
-        
-
-
-
-
-        
-    def store_recommendations_from_df(self,df):
-        """
-        Processes the DataFrame and stores or updates product recommendations in the database.
-        
-        :param df: A pandas DataFrame containing product recommendation data
-        """
-        for product_name,  row in df.iterrows():
-            product_id = row['product_id']
-            recommendation_score = row['quantity']
-            customer_id = row['customer_id']
-            loggedin_customer_id = row['loggedin_customer']
-            
-            
-            try:
-                # Try to get the existing recommendation
-                recommendation = ProductRecommendation.objects.get(product_id=product_id)
-                # Update the recommendation score if it exists
-                recommendation.recommendation_score = recommendation_score
-                recommendation.customer_id = customer_id
-                recommendation.loggedin_customer_id = loggedin_customer_id
-                recommendation.product_name = product_name  # Optionally update the product name
-                recommendation.save()
-                print(f"Updated recommendation for {product_name} ({product_id}) with score {recommendation_score}")
-            except ProductRecommendation.DoesNotExist:
-                # If the recommendation doesn't exist, create a new record
-                recommendation = ProductRecommendation.objects.create(
-                    product_id=product_id,
-                    product_name=product_name,
-                    recommendation_score=recommendation_score,
-                    customer_id=customer_id,
-                    loggedin_customer_id = loggedin_customer_id
-                )
-                print(f"Created new recommendation for {product_name} ({product_id}) with score {recommendation_score}")
-
-
-
-       
+            helper.inject_script_to_theme(responsesettings.json()["settings"], responsesettings.json()["renderedhtml"], json_output,activity_data["customerId"])
+        self.fetch_often_bought_together(activity_data, shop,version)
+    
     def install_customer_tracking_script(self,shop,access_token):
         """
         Install the tracking script into the Shopify store.
@@ -1000,8 +840,7 @@ class TrackActivityView(APIView):
             else:
                 print(f"Skipping deletion of script tag with ID: {script_tag['id']} (URL matches the target URL)")
 
-        # response = requests.post(endpoint, json=payload, headers=headers)
-        # print(response.json())
+        
 from faker import Faker
 import random
 

@@ -12,7 +12,7 @@
       "type": "textarea",
       "id": "slider_content",
       "label": "Slider Content",
-      "default": "Add your slider content here."
+      "default": "slider-content-placeholder"
     },
     {
       "type": "color",
@@ -36,8 +36,8 @@
 }
 {% endschema %}
 
-
 <link rel="stylesheet" href="{{ 'round-button-slider.css' | asset_url }}">
+
 <div class="round-button" onclick="toggleSlider()">
   {{ section.settings.button_text }}
 </div>
@@ -45,7 +45,12 @@
 <div id="sliderPanel" class="slider-panel">
   <button class="close-button" onclick="toggleSlider()">&times;</button>
   <div>
-    {{ section.settings.slider_content | escape }}
+    <!-- Dynamically render slider content -->
+    {% if section.settings.slider_content == 'slider-content-placeholder' %}
+      {% include 'slider-content' %}
+    {% else %}
+      {{ section.settings.slider_content }}
+    {% endif %}
   </div>
 </div>
 
