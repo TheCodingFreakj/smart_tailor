@@ -1,5 +1,6 @@
 from django.db import models
 from django.db.models import JSONField
+from django.utils.timezone import now
 class UserActivity(models.Model):
     user_id = models.CharField(max_length=255)  # Shopify customer ID or anonymous user ID
     product_id = models.CharField(max_length=255)  # Shopify product ID
@@ -54,3 +55,24 @@ class DynamicComponent(models.Model):
     # Optional: You can add a method to return the JSON content if needed
     def get_components(self):
         return self.components_json
+
+
+
+
+
+
+class ProductOftenBoughtTogether(models.Model):
+    customer_id = models.CharField(max_length=20, help_text="Unique identifier for the customer.")
+    product_id = models.CharField(max_length=20, help_text="Unique identifier for the main product.")
+    recommended_products = models.JSONField(help_text="List of product IDs often bought together.")
+    updated_at = models.DateTimeField(default=now, help_text="Timestamp of the last update.")
+    notes = models.TextField(blank=True, null=True, help_text="Additional information or comments.")
+
+    def __str__(self):
+        return f"Recommendations for Product {self.product_id} (Customer {self.customer_id})"
+
+    class Meta:
+        verbose_name = "Often Bought Together Recommendation"
+        verbose_name_plural = "Often Bought Together Recommendations"
+        unique_together = ("customer_id", "product_id")
+        ordering = ["-updated_at"]

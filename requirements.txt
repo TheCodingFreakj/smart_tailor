@@ -18,3 +18,7 @@ urllib3
 liquidpy
 beautifulsoup4
 mlxtend
+celery[redis]
+redis
+tabulate
+faker

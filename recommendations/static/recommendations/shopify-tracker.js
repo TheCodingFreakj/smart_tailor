@@ -29,7 +29,7 @@
            // Track some activity, e.g., product view, cart addition, etc.
     function trackCustomerActivity(activityData) {
         // Your backend endpoint where you want to send the data
-        const backendUrl = 'https://a01f-2409-4062-2ec7-2d5b-ed57-e47f-97ec-85b1.ngrok-free.app/track-activity/'; // Adjust the URL as needed
+        const backendUrl = 'https://1e16-2409-4062-2d0f-f27b-d5c3-456d-a546-1e49.ngrok-free.app/track-activity/'; // Adjust the URL as needed
 
         fetch(backendUrl, {
             method: 'POST',
@@ -52,18 +52,18 @@
         console.log(window.config_data_json);         // 99.99
     }
 
-     // Example: Track page view
-        //  const trackPageView = () => {
-        //     const eventData = {
-        //         customerId: window.loggedInCustomer.id || null,
-        //         event: 'page_view',
-        //         url: window.location.href,
-        //         timestamp: new Date().toISOString(),
-        //         action: "show_related_viewed_product_based_on_user",
-        //         shop:shop
-        //     };
-        //     trackCustomerActivity(eventData);
-        // };
+    //  Example: Track page view
+         const trackPageView = () => {
+            const eventData = {
+                customerId: window.loggedInCustomer.id || null,
+                event: 'page_view',
+                url: window.location.href,
+                timestamp: new Date().toISOString(),
+                action: "show_related_viewed_product_based_on_user",
+                shop:shop
+            };
+            trackCustomerActivity(eventData);
+        };
 
 
     const getAddToCartButtons = () => {
@@ -103,6 +103,6 @@
         });
     });
 
-    // trackPageView();
+    trackPageView();
    
 })();

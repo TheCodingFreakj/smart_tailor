@@ -29,7 +29,7 @@ DEBUG = True
 
 CSRF_TRUSTED_ORIGINS = [
     "https://smart-tailor-frnt.onrender.com",
-    'https://1721-2409-4062-2ec7-2d5b-ed57-e47f-97ec-85b1.ngrok-free.app'
+    'https://8b8f-2409-4062-2d0f-f27b-d5c3-456d-a546-1e49.ngrok-free.app'
 ]
 
 
@@ -53,8 +53,8 @@ INSTALLED_APPS = [
 ALLOWED_HOSTS = ['smart-tailor.onrender.com', 
                  '127.0.0.1',
                  'localhost', 
-                 '1721-2409-4062-2ec7-2d5b-ed57-e47f-97ec-85b1.ngrok-free.app',
-                 'a01f-2409-4062-2ec7-2d5b-ed57-e47f-97ec-85b1.ngrok-free.app'
+                 '8b8f-2409-4062-2d0f-f27b-d5c3-456d-a546-1e49.ngrok-free.app',
+                 '1e16-2409-4062-2d0f-f27b-d5c3-456d-a546-1e49.ngrok-free.app'
                  ]
 
 MIDDLEWARE = [
@@ -158,8 +158,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOWED_ORIGINS = [
     "https://smart-tailor-frnt.onrender.com",
     "http://localhost:3000",  # For local development
-    'https://1721-2409-4062-2ec7-2d5b-ed57-e47f-97ec-85b1.ngrok-free.app',
-    'https://a01f-2409-4062-2ec7-2d5b-ed57-e47f-97ec-85b1.ngrok-free.app'
+    'https://8b8f-2409-4062-2d0f-f27b-d5c3-456d-a546-1e49.ngrok-free.app',
+    'https://1e16-2409-4062-2d0f-f27b-d5c3-456d-a546-1e49.ngrok-free.app'
 
     
 ]
@@ -195,5 +195,15 @@ SHOPIFY_API_SECRET="79cdf05416a53e310f67a81e6e0ee6d1"
 USE_X_FORWARDED_HOST = True
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # SHOPIFY_APP_URL="https://smart-tailor.onrender.com"
-SHOPIFY_APP_URL="https://a01f-2409-4062-2ec7-2d5b-ed57-e47f-97ec-85b1.ngrok-free.app"
-SHOPIFY_APP_URL_FRNT='https://1721-2409-4062-2ec7-2d5b-ed57-e47f-97ec-85b1.ngrok-free.app'
+SHOPIFY_APP_URL="https://1e16-2409-4062-2d0f-f27b-d5c3-456d-a546-1e49.ngrok-free.app"
+SHOPIFY_APP_URL_FRNT='https://8b8f-2409-4062-2d0f-f27b-d5c3-456d-a546-1e49.ngrok-free.app'
+
+
+
+
+# Celery Configuration
+CELERY_BROKER_URL = 'redis://localhost:6379/0'  # URL for Redis broker
+CELERY_ACCEPT_CONTENT = ['json']  # Task serialization format
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'  # Optional: for storing task results
+CELERY_TIMEZONE = 'UTC'
