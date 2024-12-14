@@ -1,10 +1,22 @@
+import logging
 import requests
 import pandas as pd
 from mlxtend.frequent_patterns import apriori, association_rules
 from mlxtend.preprocessing import TransactionEncoder
 from datetime import datetime
 from .models import ProductOftenBoughtTogether  
+# Configure the logger
+logging.basicConfig(
+    level=logging.DEBUG,  # Set the minimum log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",  # Log message format
+    handlers=[
+        
+        logging.StreamHandler()        # Output logs to the console
+    ]
+)
 
+# Create a logger instance
+logger = logging.getLogger("AppLogger")
 class ProductRecommendationManager:
     def __init__(self, shop, api_version):
         self.shop = shop

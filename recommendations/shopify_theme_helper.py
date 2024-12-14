@@ -1,11 +1,23 @@
 
 
 import json
+import logging
 import re
 import requests
 from smarttailor import settings
 
+# Configure the logger
+logging.basicConfig(
+    level=logging.DEBUG,  # Set the minimum log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",  # Log message format
+    handlers=[
+        
+        logging.StreamHandler()        # Output logs to the console
+    ]
+)
 
+# Create a logger instance
+logger = logging.getLogger("AppLogger")
 class ShopifyThemeHelper:
     def __init__(self, shop, api_version="2024-10"):
         print(f"shop_id---->{shop}")

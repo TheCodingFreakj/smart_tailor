@@ -1,8 +1,20 @@
+import logging
 import requests
 from smarttailor import settings
 from .shopify_theme_helper import ShopifyThemeHelper
 from .shopify_data_fetcher import ShopifyDataFetcher
+# Configure the logger
+logging.basicConfig(
+    level=logging.DEBUG,  # Set the minimum log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",  # Log message format
+    handlers=[
+        
+        logging.StreamHandler()        # Output logs to the console
+    ]
+)
 
+# Create a logger instance
+logger = logging.getLogger("AppLogger")
 class ShopifySliderManager:
     def __init__(self, shop, version, activity_data):
         self.shop = shop
