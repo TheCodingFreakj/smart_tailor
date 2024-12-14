@@ -65,11 +65,11 @@ class ShopifyThemeHelper:
         params = {'asset[key]': key_url}
 
         response_get = requests.get(url, params=params,headers=self.headers)
-        print(response_get.status_code)
+       
 
         if response_get.status_code == 200:
             assets = response_get.json().get('asset', {}).get('value')
-            print(assets)
+            
             if assets:
                 params = {
                     "asset[key]": key_url
@@ -141,8 +141,6 @@ class ShopifyThemeHelper:
         """
         Injects the JSON data into the HTML content before rendering.
         """
-
-  
 
         # Replace placeholders in the HTML content with the JSON data
         updated_content = html_encoded_content

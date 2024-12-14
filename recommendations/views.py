@@ -7,6 +7,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 import requests
+
+from .asset_deleter import ShopifyAssetManager
 from .models import ProductRecommendation, UserActivity,SliderSettings
 from shopifyauthenticate.models import ShopifyStore
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
@@ -171,7 +173,38 @@ class ProductRecommendationTrackers(View):
                     removed_scripts.append(script.src)
                 else:
                     skipped_scripts.append(script.src)
+            
+            shop_url = f"https://{shop.shop_name}/admin/api/2024-10"
+            access_token = shop.access_token
+            asset_manager = ShopifyAssetManager(shop_url, access_token)
+            asset_manager.delete_asset("sections/round-button-slider.liquid")
+            asset_manager.delete_asset("snippets/slider-content.liquid")
+            asset_manager.delete_asset("assets/round-button-slider.js")        
+            asset_manager.delete_asset("assets/round-button-slider.css")
+            script_to_remove=f"""
+                {{% if template != 'index' %}}
+                  {{% section 'round-button-slider' %}}
+                    {{% endif %}}
+                """
+            asset_manager.remove_script_from_asset(script_to_remove)
 
+            script_to_add = """
+        <script>
+        {% if customer %}
+        window.loggedInCustomer = {
+            id: "{{ customer.id }}",
+            email: "{{ customer.email }}",
+            first_name: "{{ customer.first_name }}",
+            last_name: "{{ customer.last_name }}"
+        };
+        console.log("Logged in customer:", window.loggedInCustomer);
+        {% else %}
+        console.log("No customer is logged in.");
+        window.loggedInCustomer = null;
+        {% endif %}
+        </script>
+        """
+            asset_manager.remove_script_from_asset(script_to_add)
             return JsonResponse({
                 "success": True,
                 "message": "Scripts processed successfully",
@@ -304,9 +337,6 @@ class ShopifyThemeService:
 
     def inject_script_and_update_theme(self, theme_content ):
         """Inject the script and update the theme.liquid file."""
-
-
-       
         script_to_add = """
         <script>
         {% if customer %}

@@ -60,7 +60,8 @@
                 url: window.location.href,
                 timestamp: new Date().toISOString(),
                 action: "show_related_viewed_product_based_on_user",
-                shop:shop
+                shop:shop,
+                showSlider:false
             };
             trackCustomerActivity(eventData);
         };
