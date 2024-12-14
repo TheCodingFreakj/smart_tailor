@@ -29,7 +29,7 @@
            // Track some activity, e.g., product view, cart addition, etc.
     function trackCustomerActivity(activityData) {
         // Your backend endpoint where you want to send the data
-        const backendUrl = 'https://8433-2409-4062-4ec1-c432-cc9c-f253-28fd-d289.ngrok-free.app/track-activity-page-view/'; // Adjust the URL as needed
+        const backendUrl = 'https://5a5b-2409-4062-2316-73e2-dda1-9a95-4a7-cf4c.ngrok-free.app/track-activity-page-view/'; // Adjust the URL as needed
 
         fetch(backendUrl, {
             method: 'POST',
@@ -61,7 +61,7 @@
                 timestamp: new Date().toISOString(),
                 action: "show_related_viewed_product_based_on_user",
                 shop:shop,
-                showSlider:false
+                showSlider:true
             };
             trackCustomerActivity(eventData);
         };

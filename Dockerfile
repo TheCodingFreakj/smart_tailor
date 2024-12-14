@@ -14,7 +14,8 @@ RUN apt-get update && apt-get install -y \
 COPY . /app/
 
 # Install the required Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# --no-cache-dir
+RUN pip install -r requirements.txt
 
 # Expose the port the app will run on
 EXPOSE 8000

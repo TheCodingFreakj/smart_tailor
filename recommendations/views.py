@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 import requests
-
+from .tasks import process_loggedin_user_data_1
 from .related_products_user import ShopifySliderManager
 
 from .asset_deleter import ShopifyAssetManager
@@ -248,50 +248,111 @@ class ProductRecommendationTrackers(View):
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
 
+
+
+class RequestBodyHandler:
+    def __init__(self, request_body):
+        self.data = json.loads(request_body)
+        self.showSlider = self.data.get("showSlider")
+        self.shopid = self.data.get("shopid")
+        self.customerId = self.data.get("customerId")
+
+    def get_shop(self):
+        if self.shopid is not None:
+            return ShopifyStore.objects.filter(id=self.shopid).first()
+        return None
+
+
+class RequestDataHandler:
+    def __init__(self, request_data):
+        self.activity_data = request_data
+
+    def get_shop(self):
+        return ShopifyStore.objects.filter(shop_name=self.activity_data["shop"]).first()
+
+    def log_user_activity(self):
+        UserActivity.objects.create(
+            product_url=self.activity_data.get("url", "NA"),
+            user_id=self.activity_data["customerId"],
+            product_id=self.activity_data.get("product_id", "NA"),
+            action_type=self.activity_data.get("action"),
+        )
+
 @method_decorator(csrf_exempt, name='dispatch')
 class TrackActivityViewOne(APIView):
     def post(self, request, *args, **kwargs):
-        data = json.loads(request.body)
-        showSlider = data.get("showSlider") if data.get("showSlider") else True
-        shopid = data.get("shopid")
-        customerId = data.get("customerId")
-        # Extract activity data from the request
-        activity_data = request.data
-        from .tasks import process_loggedin_user_data_1
-        if shopid is not None:
-          shop = ShopifyStore.objects.filter(id=shopid).first()
-        else:
-          shop = ShopifyStore.objects.filter(shop_name=activity_data["shop"]).first()    
-        manager = ShopifySliderManager(shop,'2024-10',activity_data)
-        customer_in_db = SliderSettings.objects.filter(customer=customerId if customerId else activity_data["customerId"]).first()
+        self.handle_slider_request(request)
+       
+    def handle_slider_request(request):
+        # Initialize handlers based on availability
+        body_handler = RequestBodyHandler(request.body) if request.body else None
+        data_handler = RequestDataHandler(request.data) if request.data else None
 
-        if customer_in_db is None:
+        # Extract shop and customer information
+        shop = None
+        if body_handler:
+            shop = body_handler.get_shop()
+        if not shop and data_handler:
+            shop = data_handler.get_shop()
+
+        customer_id = None
+        if body_handler and body_handler.customerId:
+            customer_id = body_handler.customerId
+        elif data_handler:
+            customer_id = data_handler.activity_data.get("customerId")
+
+        # Check if the customer exists in the database
+        customer_in_db = SliderSettings.objects.filter(customer=customer_id).first()
+
+        # Determine if showSlider is true
+        show_slider = False
+        if body_handler and body_handler.showSlider is not None:
+            show_slider = body_handler.showSlider
+        elif data_handler:
+            show_slider = data_handler.activity_data.get("showSlider", True)
+
+        print(f"showSlider------------------->{show_slider}")
+
+        # Handle logic for showSlider = True and customer exists
+        if show_slider and customer_in_db:
+            activity_data = data_handler.activity_data if data_handler else {}
+            activity_data["showSlider"] = True
+            if "shop" in activity_data:
+                process_loggedin_user_data_1.delay(activity_data, activity_data["shop"])
+            else:
+                process_loggedin_user_data_1.delay(activity_data, shop.shop_name if shop else None)
+
+            # Log user activity
+            if data_handler:
+                data_handler.log_user_activity()
+
+        # Handle logic for showSlider = True and customer does not exist
+        elif show_slider and not customer_in_db:
+            activity_data = data_handler.activity_data if data_handler else {}
+            manager = ShopifySliderManager(shop, "2024-10", activity_data)
             manager.create_slider_settings()
 
-        
-
-
- 
-        if customer_in_db is not None:
-            activity_data["showSlider"] = True
-            if activity_data["showSlider"] == True:
-               if 'shop' in activity_data:
-                  process_loggedin_user_data_1.delay(activity_data, activity_data["shop"])
-                  UserActivity.objects.create(
-                    product_url=activity_data["url"] if "url" in activity_data else 'NA',
-                    user_id=activity_data["customerId"],
-                    product_id=activity_data["product_id"] if "product_id" in activity_data else 'NA' ,
-                    action_type=activity_data["action"] if activity_data["action"] else None,
-                )
+            # Process task after creating settings
+            if "shop" in activity_data:
+                process_loggedin_user_data_1.delay(activity_data, activity_data["shop"])
             else:
-                   process_loggedin_user_data_1.delay(activity_data, shop.shop_name)   
+                process_loggedin_user_data_1.delay(activity_data, shop.shop_name if shop else None)
 
-                
-               
-        if showSlider == True and customer_in_db is not None:
-            return JsonResponse({"message": "As the Customer Visits the page the tracker would be active"}, status=status.HTTP_200_OK)  
-        else:
-            return JsonResponse({"message": "Activity started tracking successfully"}, status=status.HTTP_200_OK)
+            return JsonResponse(
+                {"message": "As the Customer Visits the page the tracker would be active"},
+                status=status.HTTP_200_OK,
+            )
+
+        # Handle logic for showSlider = False
+        elif not show_slider:
+            SliderSettings.objects.filter(customer=customer_id).delete()
+            return JsonResponse(
+                {"message": "Activity started tracking successfully"},
+                status=status.HTTP_200_OK,
+            )
+
+        return JsonResponse({"message": "Invalid Request"}, status=status.HTTP_400_BAD_REQUEST)
+
 
 @method_decorator(csrf_exempt, name='dispatch')
 class TrackActivityViewTwo(APIView):

@@ -14,7 +14,8 @@ RUN apt-get update && apt-get install -y \
 COPY . /app/
 
 # Install the required Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# --no-cache-dir
+RUN pip install -r requirements.txt
 
 # Command to run Celery worker
 CMD ["celery", "-A", "smarttailor", "worker", "--loglevel=info"]

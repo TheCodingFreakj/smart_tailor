@@ -63,7 +63,7 @@ services:
       context: .
       dockerfile: Dockerfile
     command: python manage.py collectstatic --noinput
-    volumes:
-      - .:/app
+    # volumes:
+    #   - .:/app
     depends_on:
       - django
