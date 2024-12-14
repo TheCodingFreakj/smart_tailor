@@ -29,7 +29,7 @@
            // Track some activity, e.g., product view, cart addition, etc.
     function trackCustomerActivity(activityData) {
         // Your backend endpoint where you want to send the data
-        const backendUrl = 'https://8433-2409-4062-4ec1-c432-cc9c-f253-28fd-d289.ngrok-free.app/track-activity/'; // Adjust the URL as needed
+        const backendUrl = 'https://8433-2409-4062-4ec1-c432-cc9c-f253-28fd-d289.ngrok-free.app/track-activity-page-view/'; // Adjust the URL as needed
 
         fetch(backendUrl, {
             method: 'POST',
@@ -64,45 +64,5 @@
             };
             trackCustomerActivity(eventData);
         };
-
-
-    const getAddToCartButtons = () => {
-        const buttons = [];
-        
-        // Look for buttons or links that typically trigger add-to-cart actions
-        const byButtonType = document.querySelectorAll('button[type="submit"], button[type="button"], input[type="submit"], a[href*="cart"], a[href*="add-to-cart"]');
-        buttons.push(...byButtonType);
-    
-        // You can also check for clickable elements with a role="button" or any other common properties
-        const byRoleButton = document.querySelectorAll('[role="button"]');
-        buttons.push(...byRoleButton);
-        
-        return buttons;
-    };
-    
-
-    const trackAddToCart = (productId) => {
-        const eventData = {
-            customerId: window.loggedInCustomer.id || null,
-            event: 'add_to_cart',
-            product_id: productId,
-            url: window.location.href,
-            timestamp: new Date().toISOString(),
-            action: "show_related_product_based_on_often_bought",
-            shop:shop
-        };
-         trackCustomerActivity(eventData);
-    };
-
-    // Listen for add-to-cart events dynamically
-    const addToCartButtons = getAddToCartButtons();
-    addToCartButtons.forEach(button => {
-        button.addEventListener('click', (event) => {
-            const productId = event.target.dataset.productId || event.target.closest('[data-product-id]').dataset.productId;
-            trackAddToCart(productId);
-        });
-    });
-
     trackPageView();
-   
 })();

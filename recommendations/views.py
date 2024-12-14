@@ -1,42 +1,23 @@
-from collections import Counter, defaultdict
-import itertools
 import json
 import logging
-from mlxtend.frequent_patterns import apriori, association_rules
 import random
-import re
-from django.utils.timezone import now
-from django.db.models import F
-
-from bs4 import BeautifulSoup
-from mlxtend.preprocessing import TransactionEncoder
-from django.http import HttpResponse, JsonResponse
-from django.shortcuts import redirect
+from django.http import JsonResponse
 from django.views import View
-from jinja2 import Template
-import pandas as pd
-import numpy as np
-import pytz
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 import requests
-from tabulate import tabulate
-from .models import ProductOftenBoughtTogether, ProductRecommendation, ProductRelationship, UserActivity,SliderSettings
+from .models import ProductRecommendation, UserActivity,SliderSettings
 from shopifyauthenticate.models import ShopifyStore
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
-from datetime import datetime, timedelta
 from rest_framework import status
 import shopify
 from django.utils.decorators import method_decorator
 from smarttailor import settings
-
-import certifi
 from .serializers.recommendations import ProductRecommendationSerializer, SliderSettingsSerializer
 from liquid import Liquid
 from rest_framework import status
 from rest_framework.response import Response
-from rest_framework.decorators import api_view
 from rest_framework.views import APIView
 from .models import DynamicComponent
 from .serializers.DynamicComponentSerializer import DynamicComponentSerializer
@@ -96,25 +77,40 @@ def dashboard(request):
 
 
 @method_decorator(csrf_exempt, name='dispatch')
-class ProductRecommendationView(View):
-    #TRACKING_SCRIPT_URL = "https://a01f-2409-4062-2ec7-2d5b-ed57-e47f-97ec-85b1.ngrok-free.app/static/recommendations/shopify-tracker.js"
-    TRACKING_SCRIPT_URL = f"{settings.SHOPIFY_APP_URL}/static/recommendations/shopify-tracker.js"
+class ProductRecommendationTrackers(View):
+    # URLs for tracking scripts
+    TRACKING_SCRIPT_URL_1 = f"{settings.SHOPIFY_APP_URL}/static/recommendations/slider_manager.js"
+    TRACKING_SCRIPT_URL_2 = f"{settings.SHOPIFY_APP_URL}/static/recommendations/frequentlybought.js"
+
+    def get_tracking_script_url(self, preference):
+        """
+        Returns the appropriate tracking script URL based on user preference.
+        """
+        if preference == "slider":
+            return self.TRACKING_SCRIPT_URL_1
+        elif preference == 'fbought':
+           return self.TRACKING_SCRIPT_URL_2
+
     def post(self, request):
         """
-        Handle POST requests for multiple actions like script installation, 
+        Handle POST requests for multiple actions like script installation,
         fetching recommendations, or updating preferences.
         """
-
         data = json.loads(request.body)
         action = data.get("action")
         shop_id = data.get("shopId")
+        preference = data.get("preference")  # Get user preference
+
         shop = ShopifyStore.objects.filter(id=shop_id).first()
+        tracking_script_url = self.get_tracking_script_url(preference)
 
         if hasattr(request, 'auth') and request.auth:
             if action == "install_script":
-                return self.install_tracking_script(request, shop)
+                return self.install_tracking_script(request, shop, tracking_script_url)
             elif action == 'remove_script':
-               return self.remove_tracking_script(request, shop)
+                return self.remove_tracking_scripts(request, shop)
+            elif action == 'remove_specific_script':
+                return self.remove_specific_tracking_script(request, shop,tracking_script_url)
             else:
                 return JsonResponse({"error": "Invalid action specified"}, status=400)
         else:
@@ -122,33 +118,40 @@ class ProductRecommendationView(View):
                 shop.urlsPassed = ''
                 shop.save()
             return JsonResponse({'error': 'Authentication failed'}, status=403)
-        
 
-    def get(self, request):
+    def remove_specific_tracking_script(self,  shop,tracking_script_url):
         """
-        Handle GET requests for actions like retrieving metrics or testing endpoints.
+        Remove a specific tracking script from the Shopify store based on the provided preference.
         """
-        action = request.GET.get("action")
-
-        if action == "get_metrics":
-            return self.get_metrics(request)
-        elif action == "test_endpoint":
-            return JsonResponse({"message": "Test successful"})
-        else:
-            return JsonResponse({"error": "Invalid action specified"}, status=400)
-        
-    def remove_tracking_script(self, request, shop):
-        """
-        Remove all tracking scripts from the Shopify store except for the specified Shopify URL script.
-        """
-        data = json.loads(request.body)
-        shop_id = data.get("shopId")
-
-        if not shop_id:
-            return JsonResponse({"error": "Missing shop URL or access token"}, status=400)
-
         try:
-            # Shopify API session initialization
+   
+
+            api_version = '2024-10'  # Update this to the appropriate API version
+            session = shopify.Session(f"https://{shop.shop_name}", api_version, shop.access_token)
+            shopify.ShopifyResource.activate_session(session)
+
+            # Fetch all existing scripts
+            existing_scripts = shopify.ScriptTag.find()
+
+            # Remove the specified script
+            for script in existing_scripts:
+                if script.src == tracking_script_url:
+                    script.destroy()
+                    return JsonResponse({
+                        "success": True,
+                        "message": f"Script {tracking_script_url} removed successfully."
+                    })
+
+            return JsonResponse({"error": "Specified script not found"}, status=404)
+
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+
+    def remove_tracking_scripts(self, shop):
+        """
+        Remove all tracking scripts from the Shopify store except for the specified tracking scripts.
+        """
+        try:
             api_version = '2024-10'  # Update this to the appropriate API version
             session = shopify.Session(f"https://{shop.shop_name}", api_version, shop.access_token)
             shopify.ShopifyResource.activate_session(session)
@@ -158,17 +161,15 @@ class ProductRecommendationView(View):
             removed_scripts = []
             skipped_scripts = []
 
-            # Define the script to retain
-            script_to_retain = self.TRACKING_SCRIPT_URL  # Replace with your desired script's URL
+            # Define the scripts to retain
+            scripts_to_retain = [self.TRACKING_SCRIPT_URL_1, self.TRACKING_SCRIPT_URL_2]
 
-            # Remove all scripts except the retained one
+            # Remove all scripts except the retained ones
             for script in existing_scripts:
-                if script.src != script_to_retain:
-                    print(f"Removing script: {script.src}")
+                if script.src not in scripts_to_retain:
                     script.destroy()
                     removed_scripts.append(script.src)
                 else:
-                    print(f"Skipping script: {script.src}")
                     skipped_scripts.append(script.src)
 
             return JsonResponse({
@@ -180,24 +181,13 @@ class ProductRecommendationView(View):
 
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
-        
 
-    def install_tracking_script(self, request,shop):
+
+    def install_tracking_script(self,  shop, tracking_script_url):
         """
         Install the tracking script into the Shopify store.
         """
-
-        data = json.loads(request.body)
-        shop_id = data.get("shopId")
-        
-
-        if not shop_id:
-            return JsonResponse({"error": "Missing shop URL or access token"}, status=400)
-
-        # Shopify API session initialization
         try:
-
-
             api_version = '2024-10'
             session = shopify.Session(f"https://{shop.shop_name}", api_version, shop.access_token)
             shopify.ShopifyResource.activate_session(session)
@@ -205,13 +195,13 @@ class ProductRecommendationView(View):
             # Check if script already exists
             existing_scripts = shopify.ScriptTag.find()
             for script in existing_scripts:
-                if script.src == self.TRACKING_SCRIPT_URL:
+                if script.src == tracking_script_url:
                     return JsonResponse({"success": True, "message": "Script already installed"})
 
             # Create a new ScriptTag
             script_tag = shopify.ScriptTag.create({
                 "event": "onload",  # Load script when the page loads
-                "src": self.TRACKING_SCRIPT_URL
+                "src": tracking_script_url
             })
 
             # Handle errors
@@ -223,19 +213,36 @@ class ProductRecommendationView(View):
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
 
-
-
 @method_decorator(csrf_exempt, name='dispatch')
-class TrackActivityView(APIView):
+class TrackActivityViewOne(APIView):
     def post(self, request, *args, **kwargs):
         # Extract activity data from the request
         activity_data = request.data
-        from .tasks import process_loggedin_user_data_1, process_loggedin_user_data_2
+        from .tasks import process_loggedin_user_data_1
 
-        if activity_data["event"] == "add_to_cart":
-            process_loggedin_user_data_2.delay(request.data)
-        elif activity_data["event"] == "page_view":
-            process_loggedin_user_data_1.delay(request.data)
+      
+        process_loggedin_user_data_1.delay(request.data)
+        UserActivity.objects.create(
+                product_url=activity_data["url"] if "url" in activity_data else 'NA',
+                user_id=activity_data["customerId"],
+                product_id=activity_data["product_id"] if "product_id" in activity_data else 'NA' ,
+                action_type=activity_data["action"],
+            )
+
+        return JsonResponse({"message": "Activity started tracking successfully"}, status=status.HTTP_200_OK)
+
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class TrackActivityViewTwo(APIView):
+    def post(self, request, *args, **kwargs):
+        # Extract activity data from the request
+        activity_data = request.data
+        from .tasks import process_loggedin_user_data_2
+
+        process_loggedin_user_data_2.delay(request.data)
+            
+        
         UserActivity.objects.create(
                 product_url=activity_data["url"] if "url" in activity_data else 'NA',
                 user_id=activity_data["customerId"],
