@@ -14,7 +14,13 @@ from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
+import environ
+# Initialize environment variables
+env = environ.Env(
+    DEBUG=(bool, False)
+)
+# Read the `.env` file
+environ.Env.read_env()
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
@@ -29,7 +35,7 @@ DEBUG = True
 
 CSRF_TRUSTED_ORIGINS = [
     "https://smart-tailor-frnt.onrender.com",
-    'https://8b8f-2409-4062-2d0f-f27b-d5c3-456d-a546-1e49.ngrok-free.app'
+    env('SHOPIFY_APP_URL_FRNT')
 ]
 
 
@@ -53,8 +59,8 @@ INSTALLED_APPS = [
 ALLOWED_HOSTS = ['smart-tailor.onrender.com', 
                  '127.0.0.1',
                  'localhost', 
-                 '8b8f-2409-4062-2d0f-f27b-d5c3-456d-a546-1e49.ngrok-free.app',
-                 '1e16-2409-4062-2d0f-f27b-d5c3-456d-a546-1e49.ngrok-free.app'
+                 env('ALLOWED_HOST1'),
+                 env('ALLOWED_HOST2')
                  ]
 
 MIDDLEWARE = [
@@ -98,11 +104,11 @@ WSGI_APPLICATION = 'smarttailor.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'defaultdb',
-        'USER': 'avnadmin',
-        'PASSWORD': 'AVNS_SPx5mGZsHfWLTBIzEGM',
-        'HOST': 'pg-39985733-pallavidapriya75-97f0.h.aivencloud.com',
-        'PORT': '12783',
+        'NAME': env('DB_NAME'),
+        'USER': env('DB_USER'),
+        'PASSWORD': env('DB_PASSWORD'),
+        'HOST': env('DB_HOST'),
+        'PORT': env('DB_PORT'),
     }
 }
 
@@ -158,10 +164,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOWED_ORIGINS = [
     "https://smart-tailor-frnt.onrender.com",
     "http://localhost:3000",  # For local development
-    'https://8b8f-2409-4062-2d0f-f27b-d5c3-456d-a546-1e49.ngrok-free.app',
-    'https://1e16-2409-4062-2d0f-f27b-d5c3-456d-a546-1e49.ngrok-free.app'
-
-    
+    env('SHOPIFY_APP_URL'),
+    env('SHOPIFY_APP_URL_FRNT')   
 ]
 
 
@@ -190,20 +194,25 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 # Or allow all origins (not recommended for production)
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
-SHOPIFY_API_KEY="ceb8830cc030a920a55c93034098563c"
-SHOPIFY_API_SECRET="79cdf05416a53e310f67a81e6e0ee6d1"
+
+
+
+SHOPIFY_API_KEY=env('SHOPIFY_API_KEY')
+SHOPIFY_API_SECRET=env('SHOPIFY_API_SECRET')
+
+
 USE_X_FORWARDED_HOST = True
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # SHOPIFY_APP_URL="https://smart-tailor.onrender.com"
-SHOPIFY_APP_URL="https://1e16-2409-4062-2d0f-f27b-d5c3-456d-a546-1e49.ngrok-free.app"
-SHOPIFY_APP_URL_FRNT='https://8b8f-2409-4062-2d0f-f27b-d5c3-456d-a546-1e49.ngrok-free.app'
+SHOPIFY_APP_URL=env('SHOPIFY_APP_URL')
+SHOPIFY_APP_URL_FRNT=env('SHOPIFY_APP_URL_FRNT')
 
 
 
 
 # Celery Configuration
-CELERY_BROKER_URL = 'redis://localhost:6379/0'  # URL for Redis broker
+CELERY_BROKER_URL = env('CELERY_BROKER_URL') # URL for Redis broker
 CELERY_ACCEPT_CONTENT = ['json']  # Task serialization format
 CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'  # Optional: for storing task results
+CELERY_RESULT_BACKEND = env('CELERY_BROKER_URL')  # Optional: for storing task results
 CELERY_TIMEZONE = 'UTC'
