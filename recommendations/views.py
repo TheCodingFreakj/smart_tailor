@@ -119,7 +119,7 @@ class ProductRecommendationTrackers(View):
                 shop.save()
             return JsonResponse({'error': 'Authentication failed'}, status=403)
 
-    def remove_specific_tracking_script(self,  shop,tracking_script_url):
+    def remove_specific_tracking_script(self,  request,shop,tracking_script_url):
         """
         Remove a specific tracking script from the Shopify store based on the provided preference.
         """
@@ -147,7 +147,7 @@ class ProductRecommendationTrackers(View):
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
 
-    def remove_tracking_scripts(self, shop):
+    def remove_tracking_scripts(self,request, shop):
         """
         Remove all tracking scripts from the Shopify store except for the specified tracking scripts.
         """
@@ -183,7 +183,7 @@ class ProductRecommendationTrackers(View):
             return JsonResponse({"error": str(e)}, status=500)
 
 
-    def install_tracking_script(self,  shop, tracking_script_url):
+    def install_tracking_script(self, request, shop, tracking_script_url):
         """
         Install the tracking script into the Shopify store.
         """
@@ -216,12 +216,17 @@ class ProductRecommendationTrackers(View):
 @method_decorator(csrf_exempt, name='dispatch')
 class TrackActivityViewOne(APIView):
     def post(self, request, *args, **kwargs):
+        data = json.loads(request.body)
+        showSlider = data.get("showSlider")
         # Extract activity data from the request
         activity_data = request.data
         from .tasks import process_loggedin_user_data_1
 
-      
-        process_loggedin_user_data_1.delay(request.data)
+        if showSlider == True:
+            activity_data["showSlider"] = True
+            if activity_data["showSlider"] == True:
+               process_loggedin_user_data_1.delay(activity_data)
+
         UserActivity.objects.create(
                 product_url=activity_data["url"] if "url" in activity_data else 'NA',
                 user_id=activity_data["customerId"],

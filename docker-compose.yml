@@ -52,3 +52,18 @@ services:
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+
+
+
+# Collectstatic service (one-off)
+  collectstatic:
+    env_file:
+      - .env
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python manage.py collectstatic --noinput
+    volumes:
+      - .:/app
+    depends_on:
+      - django
