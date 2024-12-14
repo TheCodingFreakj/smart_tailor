@@ -1,5 +1,6 @@
 from datetime import datetime
 import re
+import certifi
 import pandas as pd
 import pytz
 import requests

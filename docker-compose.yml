@@ -3,6 +3,8 @@ version: "3.8"
 services:
   # Django service
   django:
+    env_file:
+      - .env
     build:
       context: .
       dockerfile: Dockerfile
@@ -25,6 +27,8 @@ services:
 
   # Celery service
   celery:
+    env_file:
+      - .env
     build:
       context: .
       dockerfile: Dockerfile.celery
@@ -37,6 +41,8 @@ services:
 
   # Celery Beat (if you have periodic tasks)
   celery-beat:
+    env_file:
+      - .env
     build:
       context: .
       dockerfile: Dockerfile.celery

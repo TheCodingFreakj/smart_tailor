@@ -17,7 +17,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 import environ
 # Initialize environment variables
 env = environ.Env(
-    DEBUG=(bool, False)
+    DEBUG=(bool, True)
 )
 # Read the `.env` file
 environ.Env.read_env()
