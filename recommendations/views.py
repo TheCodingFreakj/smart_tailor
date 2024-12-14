@@ -258,17 +258,15 @@ class TrackActivityViewOne(APIView):
         from .tasks import process_loggedin_user_data_1
         shop = ShopifyStore.objects.filter(shop_name=activity_data["shop"]).first()
         manager = ShopifySliderManager(shop,'2024-10',activity_data)
-        new_settings = manager.create_slider_settings()
-        slider_settings, created = SliderSettings.objects.get_or_create(
-            customer=activity_data["customerId"],
-            defaults={
-                'settings': new_settings["settings"],
-                'renderedhtml': new_settings["renderedhtml"]
-            }
-        )
+        customer_in_db = SliderSettings.objects.filter(customer=activity_data["customerId"]).first()
+
+        if customer_in_db is None:
+            created = manager.create_slider_settings()
+        else:
+            created = None
 
  
-        if showSlider == True and created:
+        if showSlider == True and created is not None:
             activity_data["showSlider"] = True
             if activity_data["showSlider"] == True:
                process_loggedin_user_data_1.delay(activity_data)
