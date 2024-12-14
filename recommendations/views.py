@@ -252,7 +252,7 @@ class ProductRecommendationTrackers(View):
 class TrackActivityViewOne(APIView):
     def post(self, request, *args, **kwargs):
         data = json.loads(request.body)
-        showSlider = data.get("showSlider")
+        showSlider = data.get("showSlider") if data.get("showSlider") else True
         shopid = data.get("shopid")
         customerId = data.get("customerId")
         # Extract activity data from the request
@@ -266,25 +266,32 @@ class TrackActivityViewOne(APIView):
         customer_in_db = SliderSettings.objects.filter(customer=customerId if customerId else activity_data["customerId"]).first()
 
         if customer_in_db is None:
-            created = manager.create_slider_settings()
-        else:
-            created = None
+            manager.create_slider_settings()
+
+        
+
 
  
-        if showSlider == True and created is not None:
+        if customer_in_db is not None:
             activity_data["showSlider"] = True
             if activity_data["showSlider"] == True:
-               process_loggedin_user_data_1.delay(activity_data)
-               UserActivity.objects.create(
+               if 'shop' in activity_data:
+                  process_loggedin_user_data_1.delay(activity_data, activity_data["shop"])
+                  UserActivity.objects.create(
                     product_url=activity_data["url"] if "url" in activity_data else 'NA',
                     user_id=activity_data["customerId"],
                     product_id=activity_data["product_id"] if "product_id" in activity_data else 'NA' ,
-                    action_type=activity_data["action"],
+                    action_type=activity_data["action"] if activity_data["action"] else None,
                 )
+            else:
+                   process_loggedin_user_data_1.delay(activity_data, shop.shop_name)   
 
-
-       
-        return JsonResponse({"message": "Activity started tracking successfully"}, status=status.HTTP_200_OK)
+                
+               
+        if showSlider == True and customer_in_db is not None:
+            return JsonResponse({"message": "As the Customer Visits the page the tracker would be active"}, status=status.HTTP_200_OK)  
+        else:
+            return JsonResponse({"message": "Activity started tracking successfully"}, status=status.HTTP_200_OK)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class TrackActivityViewTwo(APIView):
