@@ -62,7 +62,7 @@ class ShopifyAssetManager:
     def get_theme_asset(self, theme_id, asset_key):
         """Fetches the content of a specific theme asset."""
         response = requests.get(
-            f"{self.api_url}/themes/{theme_id}/assets.json",
+            f"{self.base_url}/themes/{theme_id}/assets.json",
             params={"asset[key]": asset_key},
             headers=self.headers
         )
@@ -70,9 +70,9 @@ class ShopifyAssetManager:
             return response.json().get("asset", {}).get("value", "")
         else:
             raise Exception(f"Failed to fetch asset: {response.status_code} {response.text}")
-        
-            
-    def remove_script_from_asset(self, asset_key, script_identifier):
+
+
+    def remove_script_from_asset(self,  script_identifier):
         """Removes a specific piece of script from a theme asset."""
 
         theme_id = self.get_main_theme_id()

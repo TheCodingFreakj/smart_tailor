@@ -253,12 +253,17 @@ class TrackActivityViewOne(APIView):
     def post(self, request, *args, **kwargs):
         data = json.loads(request.body)
         showSlider = data.get("showSlider")
+        shopid = data.get("shopid")
+        customerId = data.get("customerId")
         # Extract activity data from the request
         activity_data = request.data
         from .tasks import process_loggedin_user_data_1
-        shop = ShopifyStore.objects.filter(shop_name=activity_data["shop"]).first()
+        if shopid is not None:
+          shop = ShopifyStore.objects.filter(id=shopid).first()
+        else:
+          shop = ShopifyStore.objects.filter(shop_name=activity_data["shop"]).first()    
         manager = ShopifySliderManager(shop,'2024-10',activity_data)
-        customer_in_db = SliderSettings.objects.filter(customer=activity_data["customerId"]).first()
+        customer_in_db = SliderSettings.objects.filter(customer=customerId if customerId else activity_data["customerId"]).first()
 
         if customer_in_db is None:
             created = manager.create_slider_settings()
@@ -270,14 +275,15 @@ class TrackActivityViewOne(APIView):
             activity_data["showSlider"] = True
             if activity_data["showSlider"] == True:
                process_loggedin_user_data_1.delay(activity_data)
+               UserActivity.objects.create(
+                    product_url=activity_data["url"] if "url" in activity_data else 'NA',
+                    user_id=activity_data["customerId"],
+                    product_id=activity_data["product_id"] if "product_id" in activity_data else 'NA' ,
+                    action_type=activity_data["action"],
+                )
 
-        UserActivity.objects.create(
-                product_url=activity_data["url"] if "url" in activity_data else 'NA',
-                user_id=activity_data["customerId"],
-                product_id=activity_data["product_id"] if "product_id" in activity_data else 'NA' ,
-                action_type=activity_data["action"],
-            )
 
+       
         return JsonResponse({"message": "Activity started tracking successfully"}, status=status.HTTP_200_OK)
 
 @method_decorator(csrf_exempt, name='dispatch')
