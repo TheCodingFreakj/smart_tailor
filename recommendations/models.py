@@ -76,3 +76,29 @@ class ProductOftenBoughtTogether(models.Model):
         verbose_name_plural = "Often Bought Together Recommendations"
         unique_together = ("customer_id", "product_id")
         ordering = ["-updated_at"]
+
+
+
+from django.db import models
+from django.utils.timezone import now
+
+
+class ActiveUser(models.Model):
+    customer_id = models.CharField(max_length=255, unique=True)
+    shop = models.CharField(max_length=255)
+    is_active = models.BooleanField(default=True)
+    added_at = models.DateTimeField(default=now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Active User"
+        verbose_name_plural = "Active Users"
+        indexes = [
+            models.Index(fields=['shop', 'is_active']),
+        ]
+
+    def __str__(self):
+        return f"Active User: {self.customer_id} in {self.shop}"
+
+
+

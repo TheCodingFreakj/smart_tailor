@@ -11,14 +11,14 @@ from .tasks import process_loggedin_user_data_1
 from .related_products_user import ShopifySliderManager
 
 from .asset_deleter import ShopifyAssetManager
-from .models import ProductRecommendation, UserActivity,SliderSettings
+from .models import ProductRecommendation, UserActivity,SliderSettings, ActiveUser
 from shopifyauthenticate.models import ShopifyStore
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from rest_framework import status
 import shopify
 from django.utils.decorators import method_decorator
 from smarttailor import settings
-from .serializers.recommendations import ProductRecommendationSerializer, SliderSettingsSerializer
+from .serializers.recommendations import ProductRecommendationSerializer,ActiveUserSerializer, SliderSettingsSerializer
 from liquid import Liquid
 from rest_framework import status
 from rest_framework.response import Response
@@ -275,15 +275,19 @@ class RequestDataHandler:
             product_url=self.activity_data.get("url", "NA"),
             user_id=self.activity_data["customerId"],
             product_id=self.activity_data.get("product_id", "NA"),
-            action_type=self.activity_data.get("action"),
+            action_type=self.activity_data.get("action", "NA"),
         )
 
 @method_decorator(csrf_exempt, name='dispatch')
 class TrackActivityViewOne(APIView):
     def post(self, request, *args, **kwargs):
-        self.handle_slider_request(request)
+        return self.handle_slider_request(request)
+        # return JsonResponse(
+        #         {"message": "Tracking is on"},
+        #         status=status.HTTP_200_OK,
+        #     )
        
-    def handle_slider_request(request):
+    def handle_slider_request(self,request):
         # Initialize handlers based on availability
         body_handler = RequestBodyHandler(request.body) if request.body else None
         data_handler = RequestDataHandler(request.data) if request.data else None
@@ -301,6 +305,12 @@ class TrackActivityViewOne(APIView):
         elif data_handler:
             customer_id = data_handler.activity_data.get("customerId")
 
+        ActiveUser.objects.update_or_create(
+                    customer_id=customer_id,
+                    shop=shop,
+                    defaults={"is_active": True}
+                )    
+
         # Check if the customer exists in the database
         customer_in_db = SliderSettings.objects.filter(customer=customer_id).first()
 
@@ -309,7 +319,10 @@ class TrackActivityViewOne(APIView):
         if body_handler and body_handler.showSlider is not None:
             show_slider = body_handler.showSlider
         elif data_handler:
-            show_slider = data_handler.activity_data.get("showSlider", True)
+            if customer_in_db is None:
+                show_slider = False
+            else:
+                show_slider = data_handler.activity_data.get("showSlider", False)
 
         print(f"showSlider------------------->{show_slider}")
 
@@ -325,6 +338,11 @@ class TrackActivityViewOne(APIView):
             # Log user activity
             if data_handler:
                 data_handler.log_user_activity()
+
+            return JsonResponse(
+                {"message": "The Tracking is Active"},
+                status=status.HTTP_200_OK,
+            )    
 
         # Handle logic for showSlider = True and customer does not exist
         elif show_slider and not customer_in_db:
@@ -346,8 +364,39 @@ class TrackActivityViewOne(APIView):
         # Handle logic for showSlider = False
         elif not show_slider:
             SliderSettings.objects.filter(customer=customer_id).delete()
+            shop_url = f"https://{shop.shop_name}/admin/api/2024-10"
+            access_token = shop.access_token
+            asset_manager = ShopifyAssetManager(shop_url, access_token)
+            asset_manager.delete_asset("sections/round-button-slider.liquid")
+            asset_manager.delete_asset("snippets/slider-content.liquid")
+            asset_manager.delete_asset("assets/round-button-slider.js")        
+            asset_manager.delete_asset("assets/round-button-slider.css")
+            script_to_remove=f"""
+                {{% if template != 'index' %}}
+                  {{% section 'round-button-slider' %}}
+                    {{% endif %}}
+                """
+            asset_manager.remove_script_from_asset(script_to_remove)
+
+            script_to_add = """
+        <script>
+        {% if customer %}
+        window.loggedInCustomer = {
+            id: "{{ customer.id }}",
+            email: "{{ customer.email }}",
+            first_name: "{{ customer.first_name }}",
+            last_name: "{{ customer.last_name }}"
+        };
+        console.log("Logged in customer:", window.loggedInCustomer);
+        {% else %}
+        console.log("No customer is logged in.");
+        window.loggedInCustomer = null;
+        {% endif %}
+        </script>
+        """
+            asset_manager.remove_script_from_asset(script_to_add)
             return JsonResponse(
-                {"message": "Activity started tracking successfully"},
+                {"message": "Assets  Deleted"},
                 status=status.HTTP_200_OK,
             )
 
@@ -656,9 +705,10 @@ class SliderSettingsView(APIView):
 
                 return Response(serializer.data, status=status.HTTP_200_OK)
             else:
-                # If no customer is provided, return all SliderSettings
-                slider_settings = SliderSettings.objects.all()
-                serializer = SliderSettingsSerializer(slider_settings, many=True)
+                users = ActiveUser.objects.all()
+                # # If no customer is provided, return all SliderSettings
+                # slider_settings = SliderSettings.objects.all()
+                serializer = ActiveUserSerializer(users, many=True)
                 return Response(serializer.data, status=status.HTTP_200_OK)
         
         except SliderSettings.DoesNotExist:
