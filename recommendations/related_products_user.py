@@ -108,11 +108,11 @@ class ShopifySliderManager:
         if existing_settings and "settings" in existing_settings:
             print("Slider settings:", existing_settings)
             self.update_slider_theme(existing_settings["settings"], existing_settings["renderedhtml"], json_output)
-        else:
-            print("No settings found, creating new slider settings...")
-            # Create new slider settings
-            new_settings = self.create_slider_settings()
-            if new_settings:
-                print("New Slider settings:", new_settings)
-                self.update_slider_theme(new_settings["settings"], new_settings["renderedhtml"], json_output)
+        # else:
+        #     print("No settings found, creating new slider settings...")
+        #     # Create new slider settings
+        #     new_settings = self.create_slider_settings()
+        #     if new_settings:
+        #         print("New Slider settings:", new_settings)
+        #         self.update_slider_theme(new_settings["settings"], new_settings["renderedhtml"], json_output)
 

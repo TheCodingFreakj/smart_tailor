@@ -8,6 +8,8 @@ from rest_framework.response import Response
 from rest_framework import status
 import requests
 
+from .related_products_user import ShopifySliderManager
+
 from .asset_deleter import ShopifyAssetManager
 from .models import ProductRecommendation, UserActivity,SliderSettings
 from shopifyauthenticate.models import ShopifyStore
@@ -254,8 +256,19 @@ class TrackActivityViewOne(APIView):
         # Extract activity data from the request
         activity_data = request.data
         from .tasks import process_loggedin_user_data_1
+        shop = ShopifyStore.objects.filter(shop_name=activity_data["shop"]).first()
+        manager = ShopifySliderManager(shop,'2024-10',activity_data)
+        new_settings = manager.create_slider_settings()
+        slider_settings, created = SliderSettings.objects.get_or_create(
+            customer=activity_data["customerId"],
+            defaults={
+                'settings': new_settings["settings"],
+                'renderedhtml': new_settings["renderedhtml"]
+            }
+        )
 
-        if showSlider == True:
+ 
+        if showSlider == True and created:
             activity_data["showSlider"] = True
             if activity_data["showSlider"] == True:
                process_loggedin_user_data_1.delay(activity_data)
@@ -268,8 +281,6 @@ class TrackActivityViewOne(APIView):
             )
 
         return JsonResponse({"message": "Activity started tracking successfully"}, status=status.HTTP_200_OK)
-
-
 
 @method_decorator(csrf_exempt, name='dispatch')
 class TrackActivityViewTwo(APIView):
@@ -374,8 +385,6 @@ class ShopifyThemeService:
         response = requests.put(url, json=payload, headers=self.headers)
         response.raise_for_status()  # Raise an exception for HTTP errors
         return JsonResponse({"message": "Code Installed successfully"}, status=200)
-
-
 
 @method_decorator(csrf_exempt, name='dispatch')
 class ShopifyThemeUpdater(View):
